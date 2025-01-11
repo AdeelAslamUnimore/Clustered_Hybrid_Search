@@ -83,7 +83,7 @@ namespace hnswlib
         mutable std::mutex label_lookup_lock; // lock for label_lookup_
         std::unordered_map<labeltype, tableint> label_lookup_;
 
-        // Adeel: Metadata map
+        //  Metadata map
         std::unordered_map<tableint, std::vector<char *>> meta_data_predicates;
         /// Count-Min Sketch and Bloom Filter
         std::unordered_map<unsigned int, CountMinSketchMinHash> mapForCMS;
@@ -1855,7 +1855,7 @@ namespace hnswlib
             std::cout << "integrity ok, checked " << connections_checked << " connections\n";
         }
 
-        // Adeel Aslam
+        // 
 
         void addPointWithMetaData(const void *data_point, labeltype label, std::vector<char *> metaData, bool replace_deleted = false)
         {
@@ -1962,7 +1962,7 @@ namespace hnswlib
                     mapForCMS[clusterNumber] = cms[cms_counter]; // Store the CMS
 
                     // Writing for testing
-                    // cms[cms_counter].saveToFile("/data3/Adeel/CMS_size/" + std::to_string(clusterNumber) + ".bin");
+                    // cms[cms_counter].saveToFile("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
 
                     // mapForCMS[clusterNumber].saveToFile("/data4/hnsw/paper/Clusters/CMS_256_512/" + std::to_string(clusterNumber) + ".bin");
                     clusterNumber++;
@@ -1981,7 +1981,7 @@ namespace hnswlib
 
                 // mapForBF[clusterNumber] = std::move(bloom_filter);
                 mapForCMS[clusterNumber] = cms[cms_counter];
-                //  cms[cms_counter].saveToFile("/data3/Adeel/CMS_size/" + std::to_string(clusterNumber) + ".bin");
+                //  cms[cms_counter].saveToFile("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
 
                 // mapForCMS[clusterNumber].saveToFile("/data4/hnsw/paper/Clusters/CMS_256_512/" + std::to_string(clusterNumber) + ".bin");
 
@@ -2110,14 +2110,14 @@ namespace hnswlib
             std::unordered_set<int> visitedNodes;
             std::vector<std::pair<int, float>> result_vector;
             std::priority_queue<std::pair<float, hnswlib::labeltype>> result = searchKnn(query_data, k, nullptr, 0, 0, additionalData);
-            // cout<<"Results========="<<result.size()<<endl;
+           // cout << "Results=========" << result.size() << endl;
             std::unordered_set<int> visited_clusters;
 
             // set intersection finding similar elements
             // Clearing its memory
             //  set_intersection = std::vector<std::pair<int, std::set<char> *>>{};
             std::vector<std::pair<int, std::set<char> *>> set_intersec;
-            // cout<<"Results"<<result.size()<<endl;
+
             while (!result.empty())
             {
                 // Access the top element (a pair of float and labeltype)
@@ -2129,14 +2129,14 @@ namespace hnswlib
                 // Process the labeltype as needed
 
                 // if identiied node matches the predicate
-               
+
                 // if (result_computer_check(additionalData, label))
                 // {
 
                 //     result_vector.push_back(std::make_pair(label, top_element.first));
                 //     // //     // int t = 0;
                 // }
-               
+              
                 if (finding_disk_data_access(additionalData[0], label))
                 {
 
@@ -2181,7 +2181,7 @@ namespace hnswlib
                 {
                     visited_clusters.insert(selected_cluster);
                     std::pair<int, size_t> intersection = find_largest_intersection(set_intersec);
-                  
+
                     if (intersection.second > 100)
                     {
                         //  one_hop_search(query_data, additionalData, label, visitedNodes);
@@ -2190,10 +2190,10 @@ namespace hnswlib
                     }
                     else
                     {
-                        if (popularity_result > 10000)
+                        if (popularity_result > 8500)
                         {
 
-                           two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
+                       two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
                         }
                         else
                         {
@@ -2201,7 +2201,6 @@ namespace hnswlib
                         }
                     }
                 }
-
 
                 // // auto end = std::chrono::high_resolution_clock::now();
                 // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -2258,7 +2257,10 @@ namespace hnswlib
                 //         else
                 //         {
 
-                //             //          // two_hop_search(query_data, additionalData, label, visitedNodes);
+                
+                
+                
+               //  two_hop_search(query_data, additionalData, label, visitedNodes);
 
                 // two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
                 //         }
@@ -2473,9 +2475,9 @@ namespace hnswlib
             {
                 char *pred = query_predicate;
 
-                bool file_check = compute_file_check(nearest_neighbour_id, pred, 1000000, 8);
-                if (file_check)
-                    counter_or_disk_access = counter_or_disk_access + 1;
+                // bool file_check = compute_file_check(nearest_neighbour_id, pred, 1000000, 8);
+                // if (file_check)
+                //     counter_or_disk_access = counter_or_disk_access + 1;
 
                 for (auto &predicate : meta_data_predicates.at(nearest_neighbour_id))
                 {
@@ -2765,11 +2767,11 @@ namespace hnswlib
                     continue;
                 visited_array[candidate_id] = visited_array_tag;
                 visitedNodes.insert(candidate_id);
-                
-                 if (finding_disk_data_access(additionalData[0], candidate_id))
+
+                if (finding_disk_data_access(additionalData[0], candidate_id))
                 {
-                // if (result_computer_check(additionalData, candidate_id))
-                // {
+                    // if (result_computer_check(additionalData, candidate_id))
+                    // {
 
                     char *currObj1 = (getDataByInternalId(candidate_id));
 
@@ -2798,8 +2800,8 @@ namespace hnswlib
                     visitedNodes.insert(candidateIdTwoHop);
                     // if (result_computer_check(additionalData, candidateIdTwoHop))
                     // {
-                      if (finding_disk_data_access(additionalData[0], candidateIdTwoHop))
-                {
+                    if (finding_disk_data_access(additionalData[0], candidateIdTwoHop))
+                    {
                         char *currObj1 = (getDataByInternalId(candidateIdTwoHop));
 
                         dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
@@ -3396,7 +3398,7 @@ namespace hnswlib
 
                     reg_model.train(cdf);
                     reg_model.setMapCdfRangeKMinwise(map_cdf_range_k_minwise);
-                    reg_model.save("/data3/Adeel/CMS_size/" + std::to_string(clusterNumber) + ".bin");
+                    reg_model.save("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
 
                     mapForRegressionModel[clusterNumber] = std::move(reg_model);
 
@@ -3467,7 +3469,7 @@ namespace hnswlib
                 RegressionModel reg_model;
                 reg_model.train(cdf);
                 reg_model.setMapCdfRangeKMinwise(map_cdf_range_k_minwise);
-                reg_model.save("/data3/Adeel/CMS_size/" + std::to_string(clusterNumber) + ".bin");
+                reg_model.save("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
 
                 mapForRegressionModel[clusterNumber] = std::move(reg_model);
                 clusterNumber++;
@@ -5583,7 +5585,7 @@ namespace hnswlib
                           return a.second < b.second; // Sort by float in descending order
                       });
 
-            save_to_csv_corelation(ground_truth_for_queries, "/data3/Adeel/Corelation_Graph/Q" + std::to_string(query_num) + ".csv", query_predicates);
+            save_to_csv_corelation(ground_truth_for_queries, "/data3/""/Corelation_Graph/Q" + std::to_string(query_num) + ".csv", query_predicates);
         }
 
         void save_to_csv_corelation(const std::vector<std::pair<int, float>> &data, const std::string &filename, std::vector<char *> &query_predicates)
@@ -5955,7 +5957,7 @@ namespace hnswlib
                     mapForCMS[clusterNumber] = cms[cms_counter]; // Store the CMS
 
                     // Writing for testing
-                    // cms[cms_counter].saveToFile("/data3/Adeel/CMS_size/" + std::to_string(clusterNumber) + ".bin");
+                    // cms[cms_counter].saveToFile("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
 
                     // mapForCMS[clusterNumber].saveToFile("/data4/hnsw/paper/Clusters/CMS_256_512/" + std::to_string(clusterNumber) + ".bin");
                     clusterNumber++;
@@ -5974,7 +5976,7 @@ namespace hnswlib
 
                 // mapForBF[clusterNumber] = std::move(bloom_filter);
                 mapForCMS[clusterNumber] = cms[cms_counter];
-                // cms[cms_counter].saveToFile("/data3/Adeel/CMS_size/" + std::to_string(clusterNumber) + ".bin");
+                // cms[cms_counter].saveToFile("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
 
                 // mapForCMS[clusterNumber].saveToFile("/data4/hnsw/paper/Clusters/CMS_256_512/" + std::to_string(clusterNumber) + ".bin");
 
@@ -6028,7 +6030,7 @@ namespace hnswlib
             {
                 int seed = 45; // Every time seed changing seed will produce different hash value
                 uint32_t hash_value = MurmurHash64B(static_cast<const void *>(&id), sizeof(id), seed + i);
-                hash_value = hash_value % 2000000;
+                hash_value = hash_value % 3000000;
                 // Calculate byte  position
                 size_t index = (hash_value) / size_of_figureprint; // Round off to exact position
                 for (const auto &predicate : predicates)
@@ -6042,14 +6044,14 @@ namespace hnswlib
         }
         // It is boolean method which return if the file has corresponsding predicate . If it contain that predicate it return true otherwise false
 
-        bool compute_file_check( const unsigned int &id, const char *predicate, int file_size, int size_of_figureprint) const
+        bool compute_file_check(const unsigned int &id, const char *predicate, int file_size, int size_of_figureprint) const
         {
             bool file_check = false; // Check condition
             for (int i = 0; i < 3; i++)
             {
                 int seed = 45;
                 uint32_t hash_value = MurmurHash64B(static_cast<const void *>(&id), sizeof(id), seed + i);
-                hash_value = hash_value % 2000000;
+                hash_value = hash_value % 3000000;
                 // Calculate   position
 
                 size_t index = (hash_value) / size_of_figureprint;
@@ -6072,7 +6074,7 @@ namespace hnswlib
         void clustering_and_maintaining_sketch_with_disk_optimization(tableint sizeOfCluster)
         {
             // Define the memory block for Disk optimization access
-            unsigned int file_count = 2000000;
+            unsigned int file_count = 3000000;
             unsigned int figureprint_size = 8;
             bit_array_for_disk_access = (char *)malloc(file_count * figureprint_size);
             if (!bit_array_for_disk_access)
@@ -6187,33 +6189,37 @@ namespace hnswlib
             }
         }
 
-        bool finding_disk_data_access(char * &predicate, const hnswlib::labeltype &id) 
+        bool finding_disk_data_access(char *&predicate, const hnswlib::labeltype &id)
         {
-             bool file_check = compute_file_check(id, predicate, 2000000, 8);
+             bool file_check = compute_file_check(id, predicate, 3000000, 8);
                 if (!file_check) return file_check;
-                
-           
-            std::string filePath = "/data3/Adeel/Disk_optimization/Files/" + std::to_string(id) + ".txt";
+
+            // Construct the file path
+            std::string filePath = "/data3/""/Disk_optimization/Paper/" + std::to_string(id) + ".txt";
 
             // Open the file in read mode
             std::ifstream file(filePath);
+
             if (file.is_open())
             {
                 std::string firstLine;
                 if (std::getline(file, firstLine))
-                { 
-                   file.close(); // Close the file
+                {
+                    file.close(); // Close the file
                     // Compare the first line with the predicate
-                    std::string  pred= std::string(predicate); 
-                   
-                    return firstLine == pred;
+                    return firstLine == predicate;
                 }
                 else
                 {
                     file.close();
-                    return false;
+                    return false; // File is empty or error reading the first line
                 }
-                
+            }
+            else
+            {
+                // File does not exist or cannot be opened
+                std::cerr << "File does not exist or cannot be opened: " << filePath << std::endl;
+                return false; // Return false since the file cannot be checked
             }
         }
     };

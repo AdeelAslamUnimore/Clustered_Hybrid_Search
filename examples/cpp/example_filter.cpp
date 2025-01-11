@@ -123,7 +123,7 @@ int main()
 
     std::map<unsigned int, Vertex<std::string> *> searchMap;
 
-    int dim = 1024; // 1024; // Dimension of the elements
+    int dim = 200; // 1024; // Dimension of the elements
 
     int M = 256;               // Tightly connected with internal dimensionality of the data
                                // strongly affects the memory consumption
@@ -144,17 +144,17 @@ int main()
 
     hnswlib::L2Space space(dim);
     bool cluster_read_write = false;
-    std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData("/data4/hnsw/yt8m/genre_meta_data.csv");
+    std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData("/data4/hnsw/paper/meta_data.csv");
 
     max_elements = metaData.size();
     cout << "Maxim  " << max_elements << endl;
 
-    hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, "/data4/hnsw/yt8m/IndexStructure/M_200_efc_600.bin", metaData, multi_diemesional_meta_data, metaData_int, max_elements, mapCMS, cluster_read_write, searchMap);
+    hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, "/data4/hnsw/paper/IndexStructures/M_64_efc_200.bin", metaData, multi_diemesional_meta_data, metaData_int, max_elements, mapCMS, cluster_read_write, searchMap);
     // exit(0);
 
     // alg_hnsw->clustering_for_corelation(1000);
 
-    alg_hnsw->clustering_and_maintaining_sketch_with_disk_optimization(100000);
+   alg_hnsw->clustering_and_maintaining_sketch_with_disk_optimization(100000);
     // cout<<"Clustering"<<endl;
     // alg_hnsw->clustering_and_maintaining_sketch_test_memory(10000);
 
@@ -162,7 +162,7 @@ int main()
     //  alg_hnsw->clustering_for_cdf_range_filtering(100000);
     // alg_hnsw->clustering_for_cdf_range_filtering_int(100000);
 
-    std::ifstream file("/data4/hnsw/yt8m/Queries_Genre.csv");
+    std::ifstream file("/data4/hnsw/paper/paper_queries.csv");
     std::vector<unsigned int> left_range;
     std::vector<unsigned int> right_range;
     std::vector<std::vector<float>> total_embeddings;
@@ -181,9 +181,9 @@ int main()
         // unsigned int left_r, right_r; // left_r, right_r, clinicalArea,
         // Assuming columns are separated by semicolons
         // if (flag_read == true)
-        getline(ss, qtext, ';');
+        //getline(ss, qtext, ';');
         getline(ss, embedding, ';');
-        getline(ss, right_str, ';');
+       // getline(ss, right_str, ';');
         getline(ss, clinicalArea, ';');
         // getline(ss, embedding, ';');
 
@@ -215,7 +215,7 @@ int main()
             embeddingVector = splitToFloat(embedding, ',');
             // Here do one thing
 
-            if (embeddingVector.size() == 1024) // 768 for clinical data
+            if (embeddingVector.size() == 200) // 768 for clinical data
             {
 
                 // left_range.push_back(left_r);
@@ -232,7 +232,7 @@ int main()
     file.close();
 
     //  alg_hnsw-> clustering_for_bPlustree_range_filtering(50000, &space);
-    //  cout<<"End"<<std::endl;
+     
 
     //     //  alg_hnsw->test();
     //     //  exit(0);

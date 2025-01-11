@@ -2,8 +2,6 @@
 #define BARRUST_BLOOM_FILTER_H__
 /*******************************************************************************
 ***
-***     Author: Tyler Barrus
-***     email:  barrust@gmail.com
 ***
 ***     Version: 1.9.0
 ***     Purpose: Simple, yet effective, bloom filter implementation

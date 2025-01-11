@@ -187,7 +187,7 @@ template<typename dist_t>
 class AlgorithmInterface {
  public:
     virtual void addPoint(const void *datapoint, labeltype label, bool replace_deleted = false) = 0;
-    //Adeel 
+    //
     virtual void addPointWithMetaData(const void *datapoint, labeltype label,std::vector<char*> metaData, bool replace_deleted = false) = 0;
 
     virtual std::priority_queue<std::pair<dist_t, labeltype>>

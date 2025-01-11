@@ -139,7 +139,7 @@ int main()
 //                                                       // // Initing index
 //         cout<<"Max "<<max_elements<<endl;
 
-//          std::ofstream file("/data3/Adeel/Result_Trip_click_irange_768/datapoints.bin", std::ios::binary);
+//          std::ofstream file("/data3/""/Result_Trip_click_irange_768/datapoints.bin", std::ios::binary);
 //     if (!file) {
 //         std::cerr << "Failed to open file for writing!" << std::endl;
 //         return 1;
