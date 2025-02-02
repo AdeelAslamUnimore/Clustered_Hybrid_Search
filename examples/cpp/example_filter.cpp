@@ -35,7 +35,6 @@ void bench_mark();
 float l2_distance(const std::vector<float> &a, const std::vector<float> &b);
 pair<vector<std::vector<float>>, vector<vector<char *>>> reading_files(std::string file_path, bool flag_read);
 std::unordered_map<unsigned int, std::vector<char *>> reading_metaData(std::string file_path);
-
 bool loadCMSFiles(const std::string &folderPath, std::unordered_map<unsigned int, CountMinSketchMinHash> &mapForCMS);
 
 std::map<std::string, std::vector<unsigned int>> reading_range_data(std::string file_path);
@@ -121,9 +120,18 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
 int main()
 {
 
+    std::string filePath = "../exampleFolder/constants.txt";  // Use relative path
+
+    std::ifstream file(filePath);
+    if (!file) {
+        std::cerr << "Error opening file: " << filePath << std::endl;
+        return 1;
+    }
+
+
     std::map<unsigned int, Vertex<std::string> *> searchMap;
 
-    int dim = 200; // 1024; // Dimension of the elements
+    int dim = 128; // 1024; // Dimension of the elements
 
     int M = 256;               // Tightly connected with internal dimensionality of the data
                                // strongly affects the memory consumption
@@ -138,35 +146,36 @@ int main()
     // std::unordered_map<unsigned int, std::vector<char *>> metaData;
     //= reading_metaData("/data4/hnsw/yt8m/Meta_data_views.csv");
 
-    std::unordered_map<unsigned int, unsigned int> metaData_int; //=reading_metaData_int("/data4/hnsw/yt8m/meta_data_likes.csv");
+    std::unordered_map<unsigned int, unsigned int> metaData_int=reading_metaData_int("/data4/hnsw/yt8m/meta_data_likes.csv");
 
     //     // // //     // Loading the Index Already computed using structures
 
     hnswlib::L2Space space(dim);
     bool cluster_read_write = false;
-    std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData("/data4/hnsw/paper/meta_data.csv");
+    std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData("/data4/hnsw/TripClick/Meta_data_clinical_Area.csv");
 
-    max_elements = metaData.size();
+    max_elements = metaData_int.size();
     cout << "Maxim  " << max_elements << endl;
 
-    hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, "/data4/hnsw/paper/IndexStructures/M_64_efc_200.bin", metaData, multi_diemesional_meta_data, metaData_int, max_elements, mapCMS, cluster_read_write, searchMap);
+    hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, "/data4/hnsw/yt8m/IndexStructure/M_200_efc_600_128.bin", metaData, multi_diemesional_meta_data, metaData_int, max_elements, mapCMS, cluster_read_write, searchMap);
     // exit(0);
 
     // alg_hnsw->clustering_for_corelation(1000);
-
-   alg_hnsw->clustering_and_maintaining_sketch_with_disk_optimization(100000);
+      //  alg_hnsw->clustering_and_maintaining_sketch(100000);
+    // alg_hnsw->clustering_and_maintaining_sketch_with_disk_optimization(100000);
     // cout<<"Clustering"<<endl;
     // alg_hnsw->clustering_and_maintaining_sketch_test_memory(10000);
 
     // alg_hnsw->clustering_multidiemensional_range(100000);
     //  alg_hnsw->clustering_for_cdf_range_filtering(100000);
-    // alg_hnsw->clustering_for_cdf_range_filtering_int(100000);
+    alg_hnsw->clustering_for_cdf_range_filtering_int(100000);
 
-    std::ifstream file("/data4/hnsw/paper/paper_queries.csv");
+    std::ifstream file("/data4/hnsw/yt8m/queries_range_likes.csv");
     std::vector<unsigned int> left_range;
     std::vector<unsigned int> right_range;
     std::vector<std::vector<float>> total_embeddings;
     std::vector<std::vector<char *>> query_preds;
+    // std::vector<std::vector<std::string>> query_preds_string;
     std::string line;
     // Read the file line by line
     int count = 0;
@@ -175,34 +184,38 @@ int main()
 
     while (getline(file, line))
     {
-        
+
         std::stringstream ss(line);
         std::string qtext, embedding, right_str, left_str, clinicalArea;
         // unsigned int left_r, right_r; // left_r, right_r, clinicalArea,
         // Assuming columns are separated by semicolons
         // if (flag_read == true)
-        //getline(ss, qtext, ';');
-        getline(ss, embedding, ';');
-       // getline(ss, right_str, ';');
+        getline(ss, qtext, ';');
         getline(ss, clinicalArea, ';');
+        getline(ss, embedding, ';');
+        // getline(ss, right_str, ';');
+
         // getline(ss, embedding, ';');
 
-        //    getline(ss, left_str, ';');
-        //  getline(ss, right_str, ';');
+        getline(ss, left_str, ';');
+         getline(ss, right_str, ';');
         // getline(ss, embedding, ';');
         // getline(ss, right_r, ';');
         // getline(ss, clinicalArea, ';');
         // Initialize vectors
-        // unsigned int left_r = std::stoul(left_str);
-        // unsigned int right_r = std::stoul(right_str);
+        unsigned int left_r = std::stoul(left_str);
+        unsigned int right_r = std::stoul(right_str);
 
         // Vector of char* to store each split string
         std::vector<char *> clinicalAreaParts;
+        // std:: vector<std::string> clAreas;
         std::stringstream areaStream(clinicalArea);
         std::string part;
         // Split by comma and add each part to the vector
+
         while (std::getline(areaStream, part, ','))
         {
+
             char *cstr = strdup(part.c_str()); // Convert std::string to char*
             clinicalAreaParts.push_back(cstr);
         }
@@ -215,24 +228,25 @@ int main()
             embeddingVector = splitToFloat(embedding, ',');
             // Here do one thing
 
-            if (embeddingVector.size() == 200) // 768 for clinical data
+            if (embeddingVector.size() == 128) // 768 for clinical data
             {
 
-                // left_range.push_back(left_r);
-                // right_range.push_back(right_r);
-                total_embeddings.push_back(embeddingVector);
-                query_preds.push_back(clinicalAreaParts);
-              
-                 // cout<<"Left::  "<<left_r<<"right:: "<<right_r<<"Embedding:: "<<embeddingVector.size()<<endl;
+                left_range.push_back(left_r);
+                right_range.push_back(right_r);
+                total_embeddings.emplace_back(embeddingVector);
+
+                // query_preds.emplace_back(clinicalAreaParts);
+                // query_preds.push_back(clinicalAreaParts);
+
+             //   cout<<"Left::  "<<left_r<<"right:: "<<right_r<<"Embedding:: "<<embeddingVector.size()<<endl;
             }
         }
     }
-
+   // cout << "Q" << query_preds.size() << endl;
     // Close the file
     file.close();
 
     //  alg_hnsw-> clustering_for_bPlustree_range_filtering(50000, &space);
-     
 
     //     //  alg_hnsw->test();
     //     //  exit(0);
@@ -252,6 +266,8 @@ int main()
         500,
         600,
         800,
+        1000, 1200, 1500, 1700, 1900, 2100
+
     };
     int size_of_query_items = total_embeddings.size();
 
@@ -280,12 +296,13 @@ int main()
     {
 
         alg_hnsw->setEf(total_efs[i]);
+        //  cout<<"I am here"<<total_efs[i]<< endl;
 
         auto start = std::chrono::high_resolution_clock::now();
-        ParallelFor(0, size_of_query_items,40, [&](size_t row, size_t threadId)
+        ParallelFor(0, size_of_query_items, 40, [&](size_t row, size_t threadId)
                     {
-                        // alg_hnsw-> postFilteringApproachesRange(query_data + (row * dim),10, left_range[row], right_range[row], row, total_efs[i]);
-                        // alg_hnsw-> rangeSearch(query_data + (row * dim),10, left_range[row], right_range[row], row, total_efs[i]);
+                     //  alg_hnsw-> postFilteringApproachesRange(query_data + (row * dim),10, left_range[row], right_range[row], row, total_efs[i]);
+                        alg_hnsw-> rangeSearch(query_data + (row * dim),10, left_range[row], right_range[row], row, total_efs[i]);
 
                         //     //             // alg_hnsw->rangeSearch(query_data + (row * dim), 30, left_range[row], right_range[row], row, total_efs[i]);
                         //     //             //     / alg_hnsw->addPoint((void *)(data + dim * row), row);
@@ -293,15 +310,16 @@ int main()
                         //     //             //     alg_hnsw->addPointWithMetaData(data + (row * dim), row, data_vectors.second[row]);
                         // //    alg_hnsw->search_hybrid_range(query_data + (row * dim), 48, left_range[row], right_range[row],query_preds[row], row, total_efs[i]);
                     });
-                    alg_hnsw-> counter_disk_access();
+        // alg_hnsw-> counter_disk_access();
 
         // for (int i = 0; i < size_of_query_items; i++)
         // {
         //     // cout<<query_preds[i]<<"   "<< endl;
         //     // alg_hnsw->ground_truth_computer_for_multiattribute(query_data + (i * dim), 10, left_range[i], right_range[i], query_preds[i],i);
-        //     // alg_hnsw-> ground_truth_point_predicate(query_data + (i * dim), 15, query_preds[i], i);
-        //     alg_hnsw->ground_truth_computer_for_predicate(query_data + (i * dim), 15, left_range[i], right_range[i], i);
+        //    // alg_hnsw->ground_truth_point_predicate(query_data + (i * dim), 15, query_preds[i], i);
+        //      alg_hnsw->ground_truth_computer_for_predicate(query_data + (i * dim), 15, left_range[i], right_range[i], i);
         //     //  alg_hnsw->computing_data_for_finding_corelation(query_data + (i * dim), 15, query_preds[i], i);
+          
         // }
         // break;
         // //         alg_hnsw->rangeSearch(query_data + (i * dim),10, left_range[i], right_range[i], i);
@@ -332,7 +350,7 @@ int main()
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         double qps = static_cast<double>(duration) / 1000.0;
-        double res = 10000.0 / qps;
+        double res = 1500.0 / qps;
         // // // Output the time taken
         std::cout << "Time taken for post_filtering in microseconds: " << "For:  " << total_efs[i] << "Time:   " << res << std::endl;
         // break;
@@ -362,7 +380,7 @@ pair<vector<std::vector<float>>, vector<vector<char *>>> reading_files(std::stri
     std::string line;
     // Read the file line by line
     int count = 0;
-    getline(file, line);
+    // getline(file, line);
     int test_counter = 0;
 
     while (getline(file, line))
@@ -533,6 +551,7 @@ std::unordered_map<unsigned int, std::vector<char *>> reading_metaData(std::stri
 {
 
     std::unordered_map<unsigned int, std::vector<char *>> hashTable;
+
     std::ifstream file(file_path);
 
     if (!file.is_open())
@@ -549,26 +568,37 @@ std::unordered_map<unsigned int, std::vector<char *>> reading_metaData(std::stri
     std::getline(file, line);
     while (std::getline(file, line))
     {
+        if (!line.empty() && line.front() == '"' && line.back() == '"')
+        {
+            line = line.substr(1, line.size() - 2);
+        }
 
         std::stringstream ss(line);
         std::string left_r, right_r, clinicalAreas, embedding;
         std::string skip_1, skip_2;
 
+        // if(rowIndex==768423)
+        //  std::cout << "Original Line::: " << line << std::endl;
         // getline(ss, skip_1, ',');
         // getline(ss, skip_2, ',');
         // getline(ss, embedding, ';');
-        getline(ss, clinicalAreas, ',');
-
+        getline(ss, clinicalAreas, ';');
+        //  getline(ss, embedding, ';');
         // Vector of char* to store each split string
         std::vector<char *> clinicalAreaParts;
+        std::vector<std::string> clinicalareastring;
         std::stringstream areaStream(clinicalAreas);
 
         std::string part;
         // Split by comma and add each part to the vector
         while (std::getline(areaStream, part, ','))
         {
+            // Trim whitespace from the part
+            part.erase(0, part.find_first_not_of(" \t\n\r"));
+            part.erase(part.find_last_not_of(" \t\n\r") + 1);
+            clinicalareastring.push_back(part);
             char *cstr = strdup(part.c_str()); // Convert std::string to char*
-            clinicalAreaParts.push_back(cstr);
+            clinicalAreaParts.emplace_back(cstr);
         }
 
         hashTable[rowIndex] = clinicalAreaParts;
@@ -577,6 +607,22 @@ std::unordered_map<unsigned int, std::vector<char *>> reading_metaData(std::stri
     }
     // cout<<"RowIndex"<<rowIndex<<endl;
     // Close the file after reading
+
+    // for (const auto &pair : hashTable) {
+    //     unsigned int key = pair.first;
+    //     const std::vector<char *> &values = pair.second;
+
+    //     // Print the key
+    //     std::cout << "Key: " << key << " -> Values: ";
+
+    //     // Print the vector of char*
+    //     for (const char *value : values) {
+    //         std::cout << value << " ";  // Print the C-string
+    //     }
+
+    //     std::cout << std::endl;
+    // }
+
     file.close();
     return hashTable;
 }
@@ -697,54 +743,6 @@ std::chrono::system_clock::time_point stringToTimePoint(const std::string &date)
     ss >> std::get_time(&tm, "%Y-%m-%d");
     return std::chrono::system_clock::from_time_t(std::mktime(&tm));
 }
-
-// // Function to save the entire map to a file
-// void saveToFile(const std::unordered_map<std::string, RangeSearch<std::string>> &searchMap, const std::string &filename)
-// {
-//     std::ofstream out(filename, std::ios::binary);
-//     if (out.is_open())
-//     {
-//         size_t mapSize = searchMap.size();
-//         out.write((char *)&mapSize, sizeof(mapSize));
-
-//         for (const auto &[key, range] : searchMap)
-//         {
-//             size_t len = key.size();
-//             out.write((char *)&len, sizeof(len));
-//             out.write(key.c_str(), len);
-//             range.save(out);
-//         }
-
-//         out.close();
-//     }
-// }
-// // Function to load the map from a file
-// std::unordered_map<std::string, RangeSearch<std::string>> loadFromFile(const std::string &filename)
-// {
-//     std::unordered_map<std::string, RangeSearch<std::string>> searchMap;
-//     std::ifstream in(filename, std::ios::binary);
-//     if (in.is_open())
-//     {
-//         size_t mapSize;
-//         in.read((char *)&mapSize, sizeof(mapSize));
-
-//         for (size_t i = 0; i < mapSize; ++i)
-//         {
-//             std::string key;
-//             size_t len;
-//             in.read((char *)&len, sizeof(len));
-//             key.resize(len);
-//             in.read(&key[0], len);
-
-//             RangeSearch<std::string> range;
-//             range.load(in);
-//             searchMap[key] = range;
-//         }
-
-//         in.close();
-//     }
-//     return searchMap;
-// }
 
 std::map<unsigned int, Vertex<std::string> *> leafNodes()
 {

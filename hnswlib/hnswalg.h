@@ -156,15 +156,43 @@ namespace hnswlib
         // Memory Declared for disk optimization
         char *bit_array_for_disk_access; // = (char *)malloc(array_size_in_bytes);
         mutable int counter_or_disk_access;
+        // Compute the
 
         HierarchicalNSW(SpaceInterface<dist_t> *s)
         {
         }
+
         // Some Items for initialization
         HierarchicalNSW(
             SpaceInterface<dist_t> *s,
             const std::string &location,
             std::unordered_map<tableint, std::vector<char *>> &meta_data_predicates_,
+            int total_elememt,
+            bool nmslib = false,
+            size_t max_elements = 0,
+            bool allow_replace_deleted = false)
+            : allow_replace_deleted_(allow_replace_deleted)
+        {
+            loadIndex(location, s, max_elements);
+            // Initilization
+            max_elements_ = total_elememt;
+            meta_data_predicates = meta_data_predicates_;
+            clusterIDs = new unsigned int[max_elements_]();
+            // Initializing it when there is no file their.
+            counter_or_disk_access = 0;
+            mem_for_ids_clusters = (char *)malloc(max_elements_ * (3 * sizeof(char)));
+            memset(mem_for_ids_clusters, 0, max_elements_ * (3 * sizeof(char)));
+            // Open the file in binary mode
+            if (mem_for_ids_clusters == nullptr)
+                throw std::runtime_error("Not enough memory");
+        }
+
+        // Some Items for initialization
+        HierarchicalNSW(
+            SpaceInterface<dist_t> *s,
+            const std::string &location,
+            std::unordered_map<tableint, std::vector<char *>> &meta_data_predicates_,
+
             std::unordered_map<unsigned int, std::pair<std::string, std::vector<char *>>> &multi_diemesional_meta_data,
             std::unordered_map<unsigned int, unsigned int> &meta_data_int,
             int total_elememt,
@@ -180,6 +208,7 @@ namespace hnswlib
             // Initilization
             max_elements_ = total_elememt;
             meta_data_predicates = meta_data_predicates_;
+
             meta_data_multidiemesional_query = multi_diemesional_meta_data;
             meta_data_int_ = meta_data_int;
             mapForCMS = mapForCMS_; // Map initization
@@ -514,7 +543,7 @@ namespace hnswlib
                 top_candidates.emplace(dist, ep_id);
 
                 // ACORN
-                // if (result_computer_check(additionalData, ep_id)) //
+                // if (result_computer_check(additionalData, ep_id))
                 // {
 
                 //     //     //     //  if(range_int_computer(left_range, right_range, ep_id)){
@@ -526,7 +555,7 @@ namespace hnswlib
                 //     //     // // //     //     // // //         //     // two_hop_search_ACORN(data_point, ep_id, vl, visitedNodes, additionalData, top_candidates_ACORN1);
                 //     //     // // //     //     // // //         //     //two_hop_search_ACORN_RANGE(data_point, ep_id, vl, visitedNodes, left_range, right_range, top_candidates_ACORN1);
                 //     //     // // //     //     // // //    two_hop_search_ACORN(data_point, ep_id, vl, visitedNodes, additionalData, top_candidates_ACORN1);
-                //  }
+                //   }
 
                 //     int popularity_result = compute_corelation_pop(ep_id, string_vector);
 
@@ -675,7 +704,7 @@ namespace hnswlib
                                 //     int popularity_result = compute_corelation_pop(candidate_id, string_vector);
                                 // //   cout<<"Pop_ "<<popularity_result<<endl;
                                 //     if (popularity_result >1){
-                                // two_hop_search_ACORN(data_point, candidate_id, vl, visitedNodes, additionalData, top_candidates_ACORN1);
+                                //  two_hop_search_ACORN(data_point, candidate_id, vl, visitedNodes, additionalData, top_candidates_ACORN1);
                                 //     }
                                 //     else{
                                 //         one_hop_search_ACORN(data_point, candidate_id, vl, visitedNodes, additionalData, top_candidates_ACORN1);
@@ -1855,7 +1884,7 @@ namespace hnswlib
             std::cout << "integrity ok, checked " << connections_checked << " connections\n";
         }
 
-        // 
+        //
 
         void addPointWithMetaData(const void *data_point, labeltype label, std::vector<char *> metaData, bool replace_deleted = false)
         {
@@ -2104,18 +2133,16 @@ namespace hnswlib
          * call the cluster_base_searching for exhaustive one hop or two search from nearest topk
          */
 
-        void clustered_based_exhaustive_search(const void *query_data, size_t k, std::vector<char *> &additionalData, const int &query_num, const int &efs)
+        void clustered_based_exhaustive_search(const void *query_data, size_t k, std::vector<char *> &additionalData, const int &query_num, const int &efs, const int &popularity_threshold, std::string file_record)
         {
 
             std::unordered_set<int> visitedNodes;
             std::vector<std::pair<int, float>> result_vector;
             std::priority_queue<std::pair<float, hnswlib::labeltype>> result = searchKnn(query_data, k, nullptr, 0, 0, additionalData);
-           // cout << "Results=========" << result.size() << endl;
             std::unordered_set<int> visited_clusters;
 
             // set intersection finding similar elements
-            // Clearing its memory
-            //  set_intersection = std::vector<std::pair<int, std::set<char> *>>{};
+
             std::vector<std::pair<int, std::set<char> *>> set_intersec;
 
             while (!result.empty())
@@ -2130,70 +2157,41 @@ namespace hnswlib
 
                 // if identiied node matches the predicate
 
-                // if (result_computer_check(additionalData, label))
-                // {
-
-                //     result_vector.push_back(std::make_pair(label, top_element.first));
-                //     // //     // int t = 0;
-                // }
-              
-                if (finding_disk_data_access(additionalData[0], label))
+                if (result_computer_check(additionalData, label))
                 {
-
                     result_vector.push_back(std::make_pair(label, top_element.first));
-                    // //     // int t = 0;
                 }
-
-                // else{
-                // unsigned int selected_cluster = -1;
-                // int popularity_result = compute_popularity(label, additionalData, set_intersec, selected_cluster);
-                // if(popularity_result>2000)
-                //  one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-
-                // cout<< result_vector.size() <<endl;
-
-                // result_vector.push_back(std::make_pair(label, top_element.first));
-
-                // For keeping track of visited id
-                // if (visitedNodes.count(label) == 0)
-                //     visitedNodes.insert(label);
-
-                // int popularity_result = popularity_map[label];
-
-                // std::unordered_set<int> visited_cluster;
-                // auto start = std::chrono::high_resolution_clock::now();
 
                 unsigned int selected_cluster = -1;
 
-                //  int popularity_result = compute_popularity_CMS_Test(label, additionalData);
+                // Precompute the popularity result only once
                 int popularity_result = compute_popularity(label, additionalData, set_intersec, selected_cluster);
-                //    auto end = std::chrono::high_resolution_clock::now();
-                //     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-                //     // // one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                // cout<<"Popularity Result::  "<<popularity_result<< "SelectedCluster:::   "<< selected_cluster<<endl;
 
-                if (visited_clusters.find(selected_cluster) != visited_clusters.end())
+                // Check if the cluster has already been visited
+                if (visited_clusters.count(selected_cluster))
                 {
-                    // Cluster has already been visited
+                    // Cluster has already been visited, perform one-hop search
                     one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
                 }
                 else
                 {
+                    // Mark the cluster as visited
                     visited_clusters.insert(selected_cluster);
+
+                    // Find largest intersection only once
                     std::pair<int, size_t> intersection = find_largest_intersection(set_intersec);
 
-                    if (intersection.second > 100)
+                    // If intersection size is large, do one-hop search we 8 bit however, it can be increased
+                    if (intersection.second >= 250)
                     {
-                        //  one_hop_search(query_data, additionalData, label, visitedNodes);
-                        // cout<<"I am here"<<endl;
                         one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
                     }
                     else
                     {
-                        if (popularity_result > 8500)
+                        // Otherwise, determine the search method based on popularity result
+                        if (popularity_result > popularity_threshold)
                         {
-
-                       two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
+                            two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
                         }
                         else
                         {
@@ -2202,88 +2200,6 @@ namespace hnswlib
                     }
                 }
 
-                // // auto end = std::chrono::high_resolution_clock::now();
-                // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-                //  cout << "Popularity_result" << duration << endl;
-                //  }
-                // }
-                // }
-
-                // Precompute the popularity result only once
-                // int popularity_result = compute_popularity(label, additionalData, set_intersec, selected_cluster);
-
-                // // Check if the cluster has already been visited
-                // if (visited_clusters.count(selected_cluster)) {
-                //     // Cluster has already been visited, perform one-hop search
-                //     one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                // } else {
-                //     // Mark the cluster as visited
-                //     visited_clusters.insert(selected_cluster);
-
-                //     // Find largest intersection only once
-                //     std::pair<int, size_t> intersection = find_largest_intersection(set_intersec);
-
-                //     // If intersection size is large, do one-hop search
-                //     if (intersection.second >= 255) {
-                //         one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                //     } else {
-                //         // Otherwise, determine the search method based on popularity result
-                //         if (popularity_result > 1200) {
-                //             two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                //         } else {
-                //             one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                //         }
-                //     }
-                // }
-
-                // if (popularity_result > 5000)  {
-                //       two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                // //  }
-                // //  else{
-                // //      one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                // //  }
-                // //     {
-                // //         //     //  std::cout<<"Here"<<popularity_result<<std::endl;
-                //  std::pair<int, size_t> intersection = find_largest_intersection(set_intersec);
-
-                //         if (intersection.second >= 255)
-                //         {
-
-                //             //  one_hop_search(query_data, additionalData, label, visitedNodes);
-                //             one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                //         }
-
-                // }
-                //         else
-                //         {
-
-                
-                
-                
-               //  two_hop_search(query_data, additionalData, label, visitedNodes);
-
-                // two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                //         }
-                //     }
-                //     else
-                //     {
-                //         // std::cout<<"Here"<<popularity_result<<std::endl;
-                //         // one_hop_search(query_data, additionalData, label, visitedNodes);
-                //         one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                //     }
-                // }
-                // two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-
-                // Remove the top element
-                // std::cout<<result_vector.size()<<std::endl;
-
-                //                 bool use_one_hop = (popularity_result <= 10000) || (find_largest_intersection(set_intersec).second >= 250);
-
-                // if (use_one_hop) {
-                //     one_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                // } else {
-                //    two_hop_search(query_data, additionalData, label, visitedNodes, result_vector);
-                // }
                 result.pop();
             }
 
@@ -2297,7 +2213,7 @@ namespace hnswlib
                           });
 
                 // std::string file_path = "/data4/hnsw/paper/Recall/16_32/Q" + std::to_string(query_num) + ".csv";
-                std::string file_path = "/data4/hnsw/yt8m/Res_Gener/" + std::to_string(efs) + "/Q" + std::to_string(query_num) + ".csv";
+                std::string file_path = file_path + std::to_string(efs) + "/Q" + std::to_string(query_num) + ".csv";
 
                 // Open file in write mode
                 std::ofstream file(file_path);
@@ -2329,7 +2245,7 @@ namespace hnswlib
             cout << "   counter_or_disk_access" << counter_or_disk_access << endl;
             counter_or_disk_access = 0;
         }
-        //////////Exhaustive Search
+      
 
         /**
          * @brief Performs one hop or two hop search depends on the popularity
@@ -2665,10 +2581,10 @@ namespace hnswlib
                 {
                     file << pair.first << "," << pair.second << "\n"; // Each pair is written as ID,Distance
                     c++;
-                    // if (c > 15)
-                    // {
-                    //     break;
-                    // }
+                    if (c > 15)
+                    {
+                        break;
+                    }
                 }
 
                 file.close(); // Close the file
@@ -2768,10 +2684,10 @@ namespace hnswlib
                 visited_array[candidate_id] = visited_array_tag;
                 visitedNodes.insert(candidate_id);
 
-                if (finding_disk_data_access(additionalData[0], candidate_id))
+                // if (finding_disk_data_access(additionalData[0], candidate_id))
+                // {
+                if (result_computer_check(additionalData, candidate_id))
                 {
-                    // if (result_computer_check(additionalData, candidate_id))
-                    // {
 
                     char *currObj1 = (getDataByInternalId(candidate_id));
 
@@ -2798,10 +2714,10 @@ namespace hnswlib
                         continue;
                     visited_array[candidateIdTwoHop] = visited_array_tag;
                     visitedNodes.insert(candidateIdTwoHop);
-                    // if (result_computer_check(additionalData, candidateIdTwoHop))
-                    // {
-                    if (finding_disk_data_access(additionalData[0], candidateIdTwoHop))
+                    if (result_computer_check(additionalData, candidateIdTwoHop))
                     {
+                        // if (finding_disk_data_access(additionalData[0], candidateIdTwoHop))
+                        // {
                         char *currObj1 = (getDataByInternalId(candidateIdTwoHop));
 
                         dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
@@ -3009,7 +2925,8 @@ namespace hnswlib
             std::vector<std::pair<int, float>> result_vector;
             std::priority_queue<std::pair<float, hnswlib::labeltype>> result = searchKnn(query_data, k, nullptr, start_range, end_range);
             // Visited IDs
-
+            double start_range_double = static_cast<double>(start_range);
+            double end_range_double = static_cast<double>(end_range);
             while (!result.empty())
             {
                 // Access the top element (a pair of float and labeltype)
@@ -3030,29 +2947,32 @@ namespace hnswlib
                 // two_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
                 // else
                 // {
-                pair<double, int> CDF_Difference = predictedCDF(label, start_range, end_range, query_num);
+                pair<double, int> CDF_Difference = predictedCDF(label, start_range_double, end_range_double, query_num);
 
-                if (visited_clusters.find(CDF_Difference.second) != visited_clusters.end())
+                // if(CDF_Difference.first>0.3)
+                //       cout<<CDF_Difference.first<<"Time"<<endl;
+
+                // if (visited_clusters.find(CDF_Difference.second) != visited_clusters.end())
+                // {
+                //     // continue
+                //     // Cluster has already been visited
+                //     one_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
+                //     result.pop();
+                //     continue;
+                // }
+                // else
+                // {
+                //     visited_clusters.insert(CDF_Difference.second);
+                if (CDF_Difference.first < 2.5)
                 {
-                    // continue
-                    // Cluster has already been visited
-                    one_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
-                    result.pop();
-                    continue;
+                    two_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
                 }
                 else
                 {
-                    visited_clusters.insert(CDF_Difference.second);
-                    if (CDF_Difference.first < 0.4)
-                    {
-                        two_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
-                    }
-                    else
-                    {
 
-                        one_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
-                    }
+                    one_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
                 }
+                // }
                 //  }
                 // cout<<" CDF"<< CDF_Difference.first<< endl;
                 result.pop();
@@ -3398,7 +3318,9 @@ namespace hnswlib
 
                     reg_model.train(cdf);
                     reg_model.setMapCdfRangeKMinwise(map_cdf_range_k_minwise);
-                    reg_model.save("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
+                    reg_model.save("/data3/"
+                                   "/CMS_size/" +
+                                   std::to_string(clusterNumber) + ".bin");
 
                     mapForRegressionModel[clusterNumber] = std::move(reg_model);
 
@@ -3469,7 +3391,9 @@ namespace hnswlib
                 RegressionModel reg_model;
                 reg_model.train(cdf);
                 reg_model.setMapCdfRangeKMinwise(map_cdf_range_k_minwise);
-                reg_model.save("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
+                reg_model.save("/data3/"
+                               "/CMS_size/" +
+                               std::to_string(clusterNumber) + ".bin");
 
                 mapForRegressionModel[clusterNumber] = std::move(reg_model);
                 clusterNumber++;
@@ -3636,7 +3560,7 @@ namespace hnswlib
                     // Use a reference to mapForCMS[cluster_number] to avoid repeated lookups
 
                     auto &regression_Model = mapForRegressionModel.at(cluster_number);
-
+                    // cout<<regression_Model.predict(left_range)<<"Left "<<regression_Model.predict(right_range)<<endl;
                     double CDFs = regression_Model.predict(left_range) - regression_Model.predict(right_range);
                     // Update maximum frequency if needed
                     if (CDFs < 0)
@@ -3677,7 +3601,7 @@ namespace hnswlib
             return std::make_pair(maximumFrequency, cluster_selection);
         }
 
-        void one_hop_search_range(const void *query_data, std::string &start_range, std::string &end_range, hnswlib::labeltype &node,
+        void one_hop_search_range(const void *query_data, unsigned int &start_range, unsigned int &end_range, hnswlib::labeltype &node,
                                   std::unordered_set<int> &visitedNodes, std::vector<std::pair<int, float>> &result_vector)
         {
 
@@ -3714,9 +3638,10 @@ namespace hnswlib
                     continue;
                 visited_array[candidate_id] = visited_array_tag;
                 visitedNodes.insert(candidate_id);
-
-                if (range_result_computer_check(start_range, end_range, candidate_id))
+                if (range_int_computer(start_range, end_range, candidate_id))
                 {
+                    // if (range_result_computer_check(start_range, end_range, candidate_id))
+                    // {
 
                     char *currObj1 = (getDataByInternalId(candidate_id));
 
@@ -3738,7 +3663,7 @@ namespace hnswlib
             visited_list_pool_->releaseVisitedList(vl);
         }
 
-        void two_hop_search_range(const void *query_data, std::string &start_range, std::string &end_range, hnswlib::labeltype &node,
+        void two_hop_search_range(const void *query_data, unsigned int &start_range, unsigned int &end_range, hnswlib::labeltype &node,
                                   std::unordered_set<int> &visitedNodes, std::vector<std::pair<int, float>> &result_vector)
         {
 
@@ -3769,9 +3694,10 @@ namespace hnswlib
                     continue;
                 visited_array[candidate_id] = visited_array_tag;
                 visitedNodes.insert(candidate_id);
-
-                if (range_result_computer_check(start_range, end_range, candidate_id))
+                if (range_int_computer(start_range, end_range, candidate_id))
                 {
+                    // if (range_result_computer_check(start_range, end_range, candidate_id))
+                    // {
 
                     char *currObj1 = (getDataByInternalId(candidate_id));
 
@@ -3798,7 +3724,9 @@ namespace hnswlib
                         continue;
                     visited_array[candidateIdTwoHop] = visited_array_tag;
                     visitedNodes.insert(candidateIdTwoHop);
-                    if (range_result_computer_check(start_range, end_range, candidateIdTwoHop))
+                    // if (range_result_computer_check(start_range, end_range, candidateIdTwoHop))
+                    // {
+                    if (range_int_computer(start_range, end_range, candidateIdTwoHop))
                     {
                         char *currObj1 = (getDataByInternalId(candidateIdTwoHop));
 
@@ -5022,25 +4950,42 @@ namespace hnswlib
             }
         }
 
-        void ground_truth_point_predicate(const void *query_data, size_t k, std::vector<char *> query_predicates, int &query_num)
+        void ground_truth_point_predicate(const void *query_data, size_t k, std::vector<char *> &query_predicates, int &query_num)
         {
 
             std::vector<std::pair<int, float>> ground_truth_for_queries;
             int counterF = 0;
-
-            for (int j = 0; j < max_elements_; j++)
+            // cout<<"max_elements_"<<max_elements_<<endl;
+            for (hnswlib::tableint j = 0; j < max_elements_; j++)
             {
-
-                if (result_computer_check(query_predicates, j))
+                bool res_ = result_computer_check(query_predicates, j);
+                if (res_ == true)
                 {
                     char *currObj1 = (getDataByInternalId(j));
 
                     dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
+                    // if(dist1<1.0){
+
+                    //     for (size_t i = 0; i < query_predicates.size(); ++i) {
+                    //         std::cout << query_predicates[i];
+                    //         if (i < query_predicates.size() - 1) {
+                    //             std::cout << ", "; // Add a separator for all except the last element
+                    //         }
+                    //     }
+                    //     cout<<"\n";
+                    //       cout<<j;
+                    //       for (auto &predicate : meta_data_predicates.at(j))
+                    //         {
+                    //                 std::cout << predicate;
+                    //         }
+
+                    // }
 
                     ground_truth_for_queries.emplace_back(j, dist1);
                     counterF++;
                 }
             }
+            // cout<<"counter"<<counterF<<endl;
 
             std::sort(ground_truth_for_queries.begin(), ground_truth_for_queries.end(),
                       [](const std::pair<int, float> &a, const std::pair<int, float> &b)
@@ -5048,7 +4993,7 @@ namespace hnswlib
                           return a.second < b.second; // Sort by float in ascending order
                       });
 
-            save_to_csv(ground_truth_for_queries, "/data4/hnsw/yt8m/GroundTruthGenre/Q" + std::to_string(query_num) + ".csv");
+            save_to_csv(ground_truth_for_queries, "/data4/hnsw/TripClick/GroundTruth/Q" + std::to_string(query_num) + ".csv");
             // save_to_csv(ground_truth_for_queries, "/data4/hnsw/tripclick_full/Ground_Truth_U/Q" + std::to_string(query_num) + ".csv");
         }
 
@@ -5585,7 +5530,10 @@ namespace hnswlib
                           return a.second < b.second; // Sort by float in descending order
                       });
 
-            save_to_csv_corelation(ground_truth_for_queries, "/data3/""/Corelation_Graph/Q" + std::to_string(query_num) + ".csv", query_predicates);
+            save_to_csv_corelation(ground_truth_for_queries, "/data3/"
+                                                             "/Corelation_Graph/Q" +
+                                                                 std::to_string(query_num) + ".csv",
+                                   query_predicates);
         }
 
         void save_to_csv_corelation(const std::vector<std::pair<int, float>> &data, const std::string &filename, std::vector<char *> &query_predicates)
@@ -6191,11 +6139,14 @@ namespace hnswlib
 
         bool finding_disk_data_access(char *&predicate, const hnswlib::labeltype &id)
         {
-             bool file_check = compute_file_check(id, predicate, 3000000, 8);
-                if (!file_check) return file_check;
+            bool file_check = compute_file_check(id, predicate, 3000000, 8);
+            if (!file_check)
+                return file_check;
 
             // Construct the file path
-            std::string filePath = "/data3/""/Disk_optimization/Paper/" + std::to_string(id) + ".txt";
+            std::string filePath = "/data3/"
+                                   "/Disk_optimization/Paper/" +
+                                   std::to_string(id) + ".txt";
 
             // Open the file in read mode
             std::ifstream file(filePath);

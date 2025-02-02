@@ -121,11 +121,11 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
 int main()
 {
 
-    int dim = 1024; // Dimension of the elements
+    int dim = 768; // Dimension of the elements
 
-    int M = 256;              // Tightly connected with internal dimensionality of the data
+    int M = 16;              // Tightly connected with internal dimensionality of the data
                               // strongly affects the memory consumption
-    int ef_construction =600; // Controls index search speed/build speed tradeoff 200
+    int ef_construction =32; // Controls index search speed/build speed tradeoff 200
                               // Loading Data from file
 
     int max_elements = 0;
@@ -159,7 +159,7 @@ int main()
 //     exit(0);
 
  auto start = std::chrono::high_resolution_clock::now();
-    pair<vector<std::vector<float>>, vector<vector<char *>>> data_vectors = reading_files("/data4/hnsw/yt8m/yt_data.csv", true);
+    pair<vector<std::vector<float>>, vector<vector<char *>>> data_vectors = reading_files("/data4/hnsw/TripClick/documents_full.csv", true);
        max_elements= data_vectors.first.size();
         std::cout << "Data has been Read successfully.   " <<max_elements<< std::endl;
 
@@ -198,7 +198,7 @@ int main()
               // alg_hnsw->addPointWithMetaData(data + (row * dim), row, data_vectors.second[row]);
                });
 
-          alg_hnsw->saveIndex("/data4/hnsw/yt8m/IndexStructure/M_200_efc_600.bin");
+          alg_hnsw->saveIndex("/data4/hnsw/TripClick/IndexFile/16_32.bin");
       //  exit(0);
  auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -233,13 +233,13 @@ pair<vector<std::vector<float>>, vector<vector<char *>>> reading_files(std::stri
 
         // Assuming columns are separated by semicolons
         // if (flag_read == true)
-            getline(ss, qtext, ';');
-            getline(ss, embedding, ';');
+            // getline(ss, qtext, ';');
+            // getline(ss, embedding, ';');
             getline(ss, dateCreated, ';');
        
             getline(ss, clinicalAreas, ';');
         
-       
+             getline(ss, embedding, ';');
         //   getline(ss, clinicalAreas, ';');
         // Initialize vectors
 
@@ -253,9 +253,9 @@ pair<vector<std::vector<float>>, vector<vector<char *>>> reading_files(std::stri
            // clinicalAreasVector = splitString(dateCreated, ',');
             // Here do one thing
 
-            if (embeddingVector.size() == 1024) // 768 for clinical data
+            if (embeddingVector.size() == 768) // 768 for clinical data
             {
-              // cout<<"I am here"<<endl;
+              
                 total_embeddings.push_back(embeddingVector);
                // predicates.push_back(clinicalAreasVector);
             }
