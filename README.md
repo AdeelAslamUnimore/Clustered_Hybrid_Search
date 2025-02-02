@@ -19,10 +19,5 @@ The approach ensures efficient and accurate results by dynamically adjusting the
 
 ## Benefits
 
-By incorporating attribute popularity into the search process, this approach delivers enhanced search quality and speed, making it ideal for large-scale datasets with varying attribute types.
-
----
-
-This project is ideal for improving vector search performance, especially in environments where attribute relevance plays a significant role in search quality.
-"New Version"
-To be added
+By incorporating attribute popularity into the search process, this approach delivers enhanced search quality and speed, moreover, it is agnostic for attributes and metadata. 
+![Figure Description](C:/Users/Adeel/Downloads/ClusteringHNSW (3).eps)
