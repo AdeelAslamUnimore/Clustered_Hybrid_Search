@@ -20,4 +20,4 @@ The approach ensures efficient and accurate results by dynamically adjusting the
 ## Benefits
 
 By incorporating attribute popularity into the search process, this approach delivers enhanced search quality and speed, moreover, it is agnostic for attributes and metadata. 
-![Figure Description](ClusteringHNSW (3).eps)
+![ClusteredHNSW](https://github.com/AdeelAslamUnimore/Clustered_Hybrid_Search/ClusteringHNSW.png)
