@@ -16,8 +16,5 @@ The key steps of the proposed approach are:
 6. **Cluster Analysis**: The popularity of each cluster is evaluated, and if it exceeds a threshold, a two-hop search is performed. Otherwise, a one-hop search based on selectivity is conducted.
 
 The approach ensures efficient and accurate results by dynamically adjusting the search method according to attribute popularity and cluster characteristics.
-## Benefits
-
-By incorporating attribute popularity into the search process, this approach delivers enhanced search quality and speed, moreover, it is agnostic for attributes and metadata. 
 ![ClusteredHNSW](https://raw.githubusercontent.com/AdeelAslamUnimore/Clustered_Hybrid_Search/main/ClusteringHNSW.png)
 
