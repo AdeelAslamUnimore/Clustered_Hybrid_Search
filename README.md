@@ -54,3 +54,7 @@ rm -rvf ./build  # Remove existing build folder if it exists
 mkdir build      # Create a new build folder
 cd build         # Move into the build directory
 
+### **2. Build the Code**
+Inside the 'build' folder, use CMake to compile the proposed method:
+```sh
+cmake -DUSE_ARRAY=ON -DUSE_BLOOM_FILTER=OFF -DUSE_CQF=OFF ..
