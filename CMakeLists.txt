@@ -117,7 +117,10 @@ if(HNSWLIB_EXAMPLES)
     target_link_libraries(example_filter  hnswlib )
     add_executable(example_filter_index_creation examples/cpp/example_filter_index_creation.cpp)
     target_link_libraries(example_filter_index_creation  hnswlib)
-
+    add_executable(index_creation examples/cpp/index_creation.cpp)
+    target_link_libraries(index_creation  hnswlib )
+    add_executable(point_query_example examples/cpp/point_query_example.cpp)
+    target_link_libraries(point_query_example  hnswlib )
     # tests
    
    endif()
