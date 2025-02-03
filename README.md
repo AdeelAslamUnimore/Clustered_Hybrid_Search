@@ -60,3 +60,22 @@ Inside the `build` folder, use CMake to compile the proposed method:
 ```
 cmake -DUSE_ARRAY=ON -DUSE_BLOOM_FILTER=OFF -DUSE_CQF=OFF ..
 ```
+### 3. Configuration
+
+Once the code is compiled, navigate to the `examples/cpp` folder and locate the `constants_and_filepaths.txt` file. This file contains all the parameters for HNSW and the proposed clustering approach. Adjust the parameters according to your requirements. Below are some key parameters you may need to configure:
+
+| **Parameter**               | **Value**                |
+|-----------------------------|--------------------------|
+| DIM                         | 768                      |
+| M                           | 256                      |
+| EFC                         | 400                      |
+| CLUSTERSIZE                 | 1,000,000                |
+| POPULARITYTHRESHOLDPOINT    | 2000                     |
+| INTERSECTIONSIZE            | 250                      |
+| POPULARITYTHRESHOLDCDF      | 0.4                      |
+| INDEXPATH                   | /home/data/indexpath.bin |
+| METADATAPATH                | /home/data/metadata.csv  |
+| QUERIESPATH                 | /home/data/queries.csv   |
+| RESULTFOLDER                | /home/data/              |
+| DATASETFILE                 | /home/data/data_set.csv  |
+
