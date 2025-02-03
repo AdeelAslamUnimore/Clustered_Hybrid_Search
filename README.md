@@ -44,3 +44,13 @@ The approach adapts dynamically to attribute popularity and efficiently filters 
 ### Benefits of the Approach
 
 By incorporating **attribute popularity** into the search process, this approach improves both **search quality** and **speed**. Additionally, it is **agnostic** to the specific attributes or metadata involved, making it versatile and applicable to a wide range of datasets and domains.
+## **How to Run the Code**
+
+### **1. Initial Setup**
+Ensure a clean build environment before running the code:
+
+```sh
+rm -rvf ./build  # Remove existing build folder if it exists
+mkdir build      # Create a new build folder
+cd build         # Move into the build directory
+
