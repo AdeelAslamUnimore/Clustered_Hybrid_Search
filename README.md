@@ -79,3 +79,24 @@ Once the code is compiled, navigate to the `examples/cpp` folder and locate the 
 | RESULTFOLDER                | /home/data/              |
 | DATASETFILE                 | /home/data/data_set.csv  |
 
+### 4. Run Index Construction
+To construct the index structure, you can run the following example:
+```
+./index_creation.cpp
+```
+### 5. Run Point Queries
+To run the code for point queries, use the following:
+ ```
+./point_query_example.cpp
+ ```
+### 6. Recall Computation
+
+For recall computation, refer to the notebook `Result_note_book.ipynb`. Be sure to update the paths and the ground truth computed results, along with the folder path where the results will be saved.
+
+## Need Help or Have Questions?
+
+If you encounter any issues while running or have questions about the project, feel free to reach out for assistance:
+
+**Contact:**
+- Adeel Aslam
+- Email: [adeel.aslam@unimore.it](mailto:adeel.aslam@unimore.it)
