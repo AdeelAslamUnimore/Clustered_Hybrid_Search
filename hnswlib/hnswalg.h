@@ -186,6 +186,31 @@ namespace hnswlib
             if (mem_for_ids_clusters == nullptr)
                 throw std::runtime_error("Not enough memory");
         }
+        // Initilization for Range filtering 
+        
+        HierarchicalNSW(
+            SpaceInterface<dist_t> *s,
+            const std::string &location,
+            std::unordered_map<unsigned int, unsigned int> &meta_data_int,
+            int total_elememt,
+            bool allow_replace_deleted = false)
+            : allow_replace_deleted_(allow_replace_deleted)
+        {
+            loadIndex(location, s, max_elements);
+            // Initilization
+            max_elements_ = total_elememt;       
+            meta_data_int_ = meta_data_int;      
+            clusterIDs = new unsigned int[max_elements_]();
+            // Initializing it when there is no file their.
+            counter_or_disk_access = 0;
+
+            mem_for_ids_clusters = (char *)malloc(max_elements_ * (3 * sizeof(char)));
+            memset(mem_for_ids_clusters, 0, max_elements_ * (3 * sizeof(char)));
+            // Open the file in binary mode
+           
+            if (mem_for_ids_clusters == nullptr)
+                throw std::runtime_error("Not enough memory");
+        }
 
         // Some Items for initialization
         HierarchicalNSW(

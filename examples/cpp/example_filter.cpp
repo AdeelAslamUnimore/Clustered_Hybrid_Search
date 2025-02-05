@@ -306,7 +306,7 @@ int main()
 
                         //     //             // alg_hnsw->rangeSearch(query_data + (row * dim), 30, left_range[row], right_range[row], row, total_efs[i]);
                         //     //             //     / alg_hnsw->addPoint((void *)(data + dim * row), row);
-                        alg_hnsw->clustered_based_exhaustive_search(query_data + (row * dim), 10, query_preds[row], row, total_efs[i]);
+                       // alg_hnsw->clustered_based_exhaustive_search(query_data + (row * dim), 10, query_preds[row], row, total_efs[i]);
                         //     //             //     alg_hnsw->addPointWithMetaData(data + (row * dim), row, data_vectors.second[row]);
                         // //    alg_hnsw->search_hybrid_range(query_data + (row * dim), 48, left_range[row], right_range[row],query_preds[row], row, total_efs[i]);
                     });
