@@ -1,0 +1,11 @@
+DIM 768
+M 245
+EFC 660
+CLUSTERSIZE 10000
+POPULARITY_THRESHOLD_POINT 2000
+POPULARITY_THRESHOLD_CDF 0.4
+INDEX_PATH /home/Data/index.bin
+META_DATA_PATH /home/Data/metadata.csv
+QUERIES_PATH /home/Data/queries.csv
+RESULTFOLDER /home/RESULT/results.csv
+DATASETFILE /home/Data/dataset.csv
