@@ -121,6 +121,8 @@ if(HNSWLIB_EXAMPLES)
     target_link_libraries(index_creation  hnswlib )
     add_executable(point_query_example examples/cpp/point_query_example.cpp)
     target_link_libraries(point_query_example  hnswlib )
+    add_executable(range_query_example examples/cpp/range_query_example.cpp)
+    target_link_libraries(range_query_example  hnswlib )
     # tests
    
    endif()

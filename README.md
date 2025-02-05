@@ -89,7 +89,12 @@ To run the code for point queries, use the following:
  ```
 ./point_query_example.cpp
  ```
-### 6. Recall Computation
+### 6. Run Range Queries
+To run the code for point queries, use the following:
+ ```
+./range_query_example.cpp
+ ```
+### 7. Recall Computation
 
 For recall computation, refer to the notebook `Result_note_book.ipynb`. Be sure to update the paths and the ground truth computed results, along with the folder path where the results will be saved.
 
