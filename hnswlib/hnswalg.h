@@ -186,8 +186,8 @@ namespace hnswlib
             if (mem_for_ids_clusters == nullptr)
                 throw std::runtime_error("Not enough memory");
         }
-        // Initilization for Range filtering 
-        
+        // Initilization for Range filtering
+
         HierarchicalNSW(
             SpaceInterface<dist_t> *s,
             const std::string &location,
@@ -198,8 +198,8 @@ namespace hnswlib
         {
             loadIndex(location, s, max_elements);
             // Initilization
-            max_elements_ = total_elememt;       
-            meta_data_int_ = meta_data_int;      
+            max_elements_ = total_elememt;
+            meta_data_int_ = meta_data_int;
             clusterIDs = new unsigned int[max_elements_]();
             // Initializing it when there is no file their.
             counter_or_disk_access = 0;
@@ -207,7 +207,7 @@ namespace hnswlib
             mem_for_ids_clusters = (char *)malloc(max_elements_ * (3 * sizeof(char)));
             memset(mem_for_ids_clusters, 0, max_elements_ * (3 * sizeof(char)));
             // Open the file in binary mode
-           
+
             if (mem_for_ids_clusters == nullptr)
                 throw std::runtime_error("Not enough memory");
         }
@@ -2270,7 +2270,6 @@ namespace hnswlib
             cout << "   counter_or_disk_access" << counter_or_disk_access << endl;
             counter_or_disk_access = 0;
         }
-      
 
         /**
          * @brief Performs one hop or two hop search depends on the popularity
@@ -2549,7 +2548,7 @@ namespace hnswlib
         using the distance function of the HNSWlib*/
 
         // std::vector<char *> &additionalData
-        void ground_truth_computer_for_predicate(const void *query_data, size_t k, unsigned int &start_range, unsigned int &end_range, int &query_num) //, std::unordered_map<unsigned int, std::vector<char *>> &metaDataMap
+        void ground_truth_computer_for_predicate(const void *query_data, size_t k, unsigned int &start_range, unsigned int &end_range, int &query_num, std::string &path) //, std::unordered_map<unsigned int, std::vector<char *>> &metaDataMap
 
         {
             std::vector<std::pair<int, float>> ground_truth_for_queries;
@@ -2564,20 +2563,7 @@ namespace hnswlib
                     ground_truth_for_queries.emplace_back(j, dist1);
                 }
 
-                // bool flag = false;
-
-                // Assuming meta_data_predicates is accessible here and contains pairs of (string, vector<char*>)
-                // std::pair<std::string, std::vector<char *>> pair_of_vector = meta_data_multidiemesional_query[j];
-
-                // if (pair_of_vector.first >= start_range && pair_of_vector.first <= end_range)
-                // {
-                //     // cout<<"Pair"<<start_range<<"Pair se"<<end_range<<"    "<< pair_of_vector.first<<endl;
-
-                //     ground_truth_for_queries.emplace_back(j, dist1);
-                // }
-
-                //  std::pair<std::string, std::vector<char *>> pair_of_vector = meta_data_multidiemesional_query[j];
-            }
+                            }
 
             // Sort the results based on the distance (second element in pair)
             std::sort(ground_truth_for_queries.begin(), ground_truth_for_queries.end(),
@@ -2587,7 +2573,7 @@ namespace hnswlib
                       });
 
             // Save results to CSV
-            save_to_csv(ground_truth_for_queries, "/data4/hnsw/yt8m/GroundTruthGenre//Q" + std::to_string(query_num) + ".csv");
+            save_to_csv(ground_truth_for_queries, path+"/Q" + std::to_string(query_num) + ".csv");
         }
         /*This function is saving the data to the file of ground truth*/
         void save_to_csv(const std::vector<std::pair<int, float>> &data, const std::string &filename)
@@ -2942,255 +2928,119 @@ namespace hnswlib
             // Close the file
             s_File.close();
         }
-        // Perform the range search
-        void rangeSearch(const void *query_data, size_t k, unsigned int &start_range, unsigned int &end_range, const int &query_num, const int &efs)
+        /**
+         * @brief Performs a range-based search and writes the top results to a file.
+         *
+         * @param query_data       Pointer to the query data.
+         * @param k                Number of nearest neighbors to search for.
+         * @param start_range      Reference to the starting range (modifiable).
+         * @param end_range        Reference to the ending range (modifiable).
+         * @param query_num        Query identifier (used for file naming).
+         * @param efs              Expansion factor for search.
+         * @param popularity_threshold Threshold to determine whether a cluster should be expanded.
+         * @param file_address     Path where the results should be saved.
+         */
+        void rangeSearch(const void *query_data, size_t k, unsigned int &start_range, unsigned int &end_range,
+                         const int &query_num, const int &efs, double popularity_threshold, std::string file_address)
         {
+            // Track visited clusters to prevent redundant searches.
             std::unordered_set<int> visited_clusters;
+
+            // Track visited nodes to avoid duplicate processing.
             std::unordered_set<int> visitedNodes;
+
+            // Store final results as (node ID, distance).
             std::vector<std::pair<int, float>> result_vector;
-            std::priority_queue<std::pair<float, hnswlib::labeltype>> result = searchKnn(query_data, k, nullptr, start_range, end_range);
-            // Visited IDs
+
+            // Perform the initial k-nearest neighbors search.
+            std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
+                searchKnn(query_data, k, nullptr, start_range, end_range);
+
+            // Convert range values to double for later calculations.
             double start_range_double = static_cast<double>(start_range);
             double end_range_double = static_cast<double>(end_range);
+
+            // Process each result from the search.
             while (!result.empty())
             {
-                // Access the top element (a pair of float and labeltype)
+                // Get the top element (nearest neighbor).
                 std::pair<float, hnswlib::labeltype> top_element = result.top();
+                hnswlib::labeltype label = top_element.second; // Extract label ID.
 
-                // Get the labeltype from the pair
-                hnswlib::labeltype label = top_element.second;
-
-                //  int count_Total = 0;
+                // Check if the label falls within the specified range.
                 if (range_int_computer(start_range, end_range, label))
                 {
-                    // if (range_result_computer_check(start_range, end_range, label))
-                    // {
-                    //     // The item
-                    result_vector.push_back(std::make_pair(label, top_element.first));
+                    result_vector.push_back(std::make_pair(label, top_element.first)); // Store valid result.
                 }
-                //  }
-                // two_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
-                // else
-                // {
+
+                // Compute predicted CDF difference and determine cluster relevance.
                 pair<double, int> CDF_Difference = predictedCDF(label, start_range_double, end_range_double, query_num);
 
-                // if(CDF_Difference.first>0.3)
-                //       cout<<CDF_Difference.first<<"Time"<<endl;
-
-                // if (visited_clusters.find(CDF_Difference.second) != visited_clusters.end())
-                // {
-                //     // continue
-                //     // Cluster has already been visited
-                //     one_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
-                //     result.pop();
-                //     continue;
-                // }
-                // else
-                // {
-                //     visited_clusters.insert(CDF_Difference.second);
-                if (CDF_Difference.first < 2.5)
+                if (CDF_Difference.first < popularity_threshold) // If the cluster is popular.
                 {
-                    two_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
+                    if (visited_clusters.find(CDF_Difference.second) != visited_clusters.end())
+                    {
+                        // If the cluster has already been visited, perform a one-hop search.
+                        one_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
+                    }
+                    else
+                    {
+                        // If the cluster is new, mark it as visited and perform a two-hop search.
+                        visited_clusters.insert(CDF_Difference.second);
+                        two_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
+                    }
                 }
                 else
                 {
-
+                    // If the cluster is not popular, perform only a one-hop search.
                     one_hop_search_range(query_data, start_range, end_range, label, visitedNodes, result_vector);
                 }
-                // }
-                //  }
-                // cout<<" CDF"<< CDF_Difference.first<< endl;
+
+                // Remove the processed result from the priority queue.
                 result.pop();
             }
 
-            //         Vertex<std::string> *vertex_greater = searchMap[label]->getPrev();
-            //         // while (vertex_greater)
-            //         // {
-
-            //         //     if (end_range >= vertex_greater->getCurrentNodePredicate())
-            //         //     {
-            //         //         // std::cout<<"Current"<<vertex_greater->getCurrentNodePredicate()<<"End   "<<end_range<<std::endl;
-            //         //         char *currObj1 = (getDataByInternalId(vertex_greater->getNodeId()));
-            //         //         dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
-            //         //         result_vector.push_back(std::make_pair(vertex_greater->getNodeId(), dist1));
-            //         //         vertex_greater = vertex_greater->getPrev();
-            //         //     }
-            //         //     else
-            //         //     {
-            //         //         break;
-            //         //     }
-            //         // }
-            //         auto process_greater_lambda = [&](Vertex<std::string> *vertex_greater)
-            //         {
-            //             while (vertex_greater)
-            //             {
-            //                 if (end_range >= vertex_greater->getCurrentNodePredicate())
-            //                 {
-            //                     char *currObj1 = this->getDataByInternalId(vertex_greater->getNodeId());
-            //                     dist_t dist1 = this->fstdistfunc_(query_data, currObj1, this->dist_func_param_);
-
-            //                     {
-            //                         std::lock_guard<std::mutex> lock(result_mutex);
-            //                         result_vector.push_back(std::make_pair(vertex_greater->getNodeId(), dist1));
-            //                     }
-
-            //                     vertex_greater = vertex_greater->getPrev();
-            //                 }
-            //                 else
-            //                 {
-            //                     break;
-            //                 }
-            //             }
-            //         };
-
-            //         auto process_smaller_lambda = [&](Vertex<std::string> *vertex_smaller)
-            //         {
-            //             while (vertex_smaller)
-            //             {
-            //                 if (start_range <= vertex_smaller->getCurrentNodePredicate())
-            //                 {
-            //                     char *currObj1 = this->getDataByInternalId(vertex_smaller->getNodeId());
-            //                     dist_t dist1 = this->fstdistfunc_(query_data, currObj1, this->dist_func_param_);
-
-            //                     {
-            //                         std::lock_guard<std::mutex> lock(result_mutex);
-            //                         result_vector.push_back(std::make_pair(vertex_smaller->getNodeId(), dist1));
-            //                     }
-
-            //                     vertex_smaller = vertex_smaller->getNext();
-            //                 }
-            //                 else
-            //                 {
-            //                     break;
-            //                 }
-            //             }
-            //         };
-
-            //         Vertex<std::string> *vertex_smaller = searchMap[label]->getNext();
-
-            //         std::thread t1(process_greater_lambda, vertex_greater);
-            //         std::thread t2(process_smaller_lambda, vertex_smaller);
-
-            //         // Wait for both threads to complete
-            //         t1.join();
-            //         t2.join();
-
-            //         // while (vertex_smaller)
-            //         // {
-            //         //     if (start_range <= vertex_smaller->getCurrentNodePredicate())
-            //         //     {
-            //         //         std::cout << "Current" << vertex_smaller->getCurrentNodePredicate() << "End   " << start_range << std::endl;
-            //         //         char *currObj1 = (getDataByInternalId(vertex_smaller->getNodeId()));
-            //         //         dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
-            //         //         result_vector.push_back(std::make_pair(vertex_smaller->getNodeId(), dist1));
-            //         //         vertex_smaller = vertex_smaller->getNext();
-            //         //     }
-            //         //     else
-            //         //     {
-            //         //         break;
-            //         //     }
-            //         // }
-
-            //         // std::string pred_str(meta_data_predicates[label][0]);
-            //         // // std::cout<<"PredicateAfter"<<pred_str<<std::endl;
-            //         // RangeSearch<std::string> range = searchMap[pred_str];
-            //         // for (size_t ids : range.getCurrNodes())
-            //         // {
-            //         //     // std::cout<<"Prev-ID"<< ids<<"Range_PreV"<<range_prev.getRangeData()<<"Start"<<start_range<<std::endl;
-
-            //         //     char *currObj1 = (getDataByInternalId(ids));
-
-            //         //     dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
-
-            //         //     result_vector.push_back(std::make_pair(ids, dist1));
-            //         // }
-
-            //         // RangeSearch<std::string> range_prev = searchMap[range.get_prev_node_data()];
-            //         // RangeSearch<std::string> range_next = searchMap[range.get_next_node_data()];
-            //         // std::string rangePrev = range_prev.getRangeData();
-            //         // std::string rangeNext = range_next.getRangeData();
-            //         // while (range_prev.getRangeData() >= start_range)
-            //         // {
-
-            //         //     for (size_t ids : range_prev.getCurrNodes())
-            //         //     {
-            //         //         // std::cout<<"Prev-ID"<< ids<<"Range_PreV"<<range_prev.getRangeData()<<"Start"<<start_range<<std::endl;
-
-            //         //         char *currObj1 = (getDataByInternalId(ids));
-
-            //         //         dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
-
-            //         //         result_vector.push_back(std::make_pair(ids, dist1));
-            //         //     }
-
-            //         //     // if ( (range_prev.get_prev_node_data() == ""))
-            //         //     //     break;
-            //         //     range_prev = searchMap[range_prev.get_prev_node_data()];
-            //         // }
-
-            //         // while (end_range >= range_next.getRangeData())
-            //         // {
-
-            //         //     for (size_t ids : range_next.getCurrNodes())
-            //         //     {
-            //         //         char *currObj1 = (getDataByInternalId(ids));
-
-            //         //         dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
-
-            //         //         result_vector.push_back(std::make_pair(ids, dist1));
-            //         //     }
-
-            //         //     // if ((range_next.get_next_node_data() == ""))
-            //         //     //     break;
-            //         //     range_next = searchMap[range_next.get_next_node_data()];
-            //         // }
-
-            //         break;
-            //     }
-
-            //     result.pop();
-            // }
-            // //  std::cout << "Iter" << query_num << std::endl;
-
-            // //  exit(0);
-            // //  std::cout<<"Results"<<result_vector.size()<<"Query Nume"<<query_num<<std::endl;
-
+            // If results exist, sort and save them to a file.
             if (!result_vector.empty())
             {
+                // Sort results in ascending order based on distance.
                 std::sort(result_vector.begin(), result_vector.end(),
                           [](const std::pair<int, float> &a, const std::pair<int, float> &b)
                           {
-                              return a.second < b.second; // Sort by the float value (distance) in ascending order
+                              return a.second < b.second; // Sort by distance.
                           });
 
-                std::string file_path = "/data4/hnsw/yt8m/Res_Gener/" + std::to_string(efs) + "/Q" + std::to_string(query_num) + ".csv";
+                // Construct the output file path.
+                std::string file_path = file_address + std::to_string(efs) + "/Q" + std::to_string(query_num) + ".csv";
 
-                // Open file in write mode
+                // Open the output file in write mode.
                 std::ofstream file(file_path);
 
-                // Check if the file is open
+                // Check if the file opened successfully.
                 if (!file.is_open())
                 {
                     std::cerr << "Failed to open file: " << file_path << std::endl;
                     return;
                 }
 
-                // Write the header
+                // Write the CSV header.
                 file << "ID,distance\n";
 
-                // Write the data
+                // Write up to 15 records to the file.
                 int tmp_count = 0;
                 for (const auto &entry : result_vector)
                 {
                     file << entry.first << "," << entry.second << "\n";
-                    // tmp_count= tmp_count+1;
-                    // if(tmp_count==15) break;
+                    tmp_count++;
+                    if (tmp_count == 15)
+                        break; // Limit the output to 15 results.
                 }
-                // std::cout << "First_record" << std::endl;
-                // Close the file
+
+                // Close the output file.
                 file.close();
             }
         }
+
         // Check the ranges if the item is in between lower and upper bound
         bool range_result_computer_check(std::string &start_range, std::string &end_range, tableint nearest_neighbour_id) const
         {
@@ -4975,7 +4825,7 @@ namespace hnswlib
             }
         }
 
-        void ground_truth_point_predicate(const void *query_data, size_t k, std::vector<char *> &query_predicates, int &query_num)
+        void ground_truth_point_predicate(const void *query_data, size_t k, std::vector<char *> &query_predicates, int &query_num, std::string path)
         {
 
             std::vector<std::pair<int, float>> ground_truth_for_queries;
@@ -4989,22 +4839,7 @@ namespace hnswlib
                     char *currObj1 = (getDataByInternalId(j));
 
                     dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
-                    // if(dist1<1.0){
-
-                    //     for (size_t i = 0; i < query_predicates.size(); ++i) {
-                    //         std::cout << query_predicates[i];
-                    //         if (i < query_predicates.size() - 1) {
-                    //             std::cout << ", "; // Add a separator for all except the last element
-                    //         }
-                    //     }
-                    //     cout<<"\n";
-                    //       cout<<j;
-                    //       for (auto &predicate : meta_data_predicates.at(j))
-                    //         {
-                    //                 std::cout << predicate;
-                    //         }
-
-                    // }
+                    
 
                     ground_truth_for_queries.emplace_back(j, dist1);
                     counterF++;
@@ -5018,7 +4853,7 @@ namespace hnswlib
                           return a.second < b.second; // Sort by float in ascending order
                       });
 
-            save_to_csv(ground_truth_for_queries, "/data4/hnsw/TripClick/GroundTruth/Q" + std::to_string(query_num) + ".csv");
+            save_to_csv(ground_truth_for_queries, path + std::to_string(query_num) + ".csv");
             // save_to_csv(ground_truth_for_queries, "/data4/hnsw/tripclick_full/Ground_Truth_U/Q" + std::to_string(query_num) + ".csv");
         }
 

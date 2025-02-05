@@ -237,7 +237,7 @@ int main()
     // std::string QUERIES_PATH=constants["QUERIESPATH"];
     int dim = std::stoi(constants["DIM"]);
     int cluster_size = std::stoi(constants["CLUSTERSIZE"]);
-    int popularity_threshold=std::stoi(constants["POPULARITYTHRESHOLDPOINT"]);
+    int popularity_threshold = std::stoi(constants["POPULARITYTHRESHOLDPOINT"]);
     hnswlib::L2Space space(dim);
     std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData(constants["METADATAPATH"]);
     int max_elements = metaData.size();
@@ -285,10 +285,10 @@ int main()
             }
         }
     }
-   
+
     // Close the file
     file.close();
-// Total EFS which further used for exploratory search on HNSW
+    // Total EFS which further used for exploratory search on HNSW
     int total_efs[] = {
         20,
         40,
@@ -303,7 +303,7 @@ int main()
         1000, 1200, 1500, 1700, 1900, 2100
 
     };
-    //Number of queries
+    // Number of queries
     int size_of_query_items = total_embeddings.size();
 
     float *query_data = new float[dim * size_of_query_items];
@@ -334,17 +334,26 @@ int main()
 
         auto start = std::chrono::high_resolution_clock::now();
         ParallelFor(0, size_of_query_items, 40, [&](size_t row, size_t threadId)
-                    { alg_hnsw->clustered_based_exhaustive_search(query_data + (row * dim), 10, query_attributes[row], row, total_efs[i],popularity_threshold, constants["RESULTFOLDER"]); });
-   
-         auto end = std::chrono::high_resolution_clock::now();
+                    { alg_hnsw->clustered_based_exhaustive_search(query_data + (row * dim), 10, query_attributes[row], row, total_efs[i], popularity_threshold, constants["RESULTFOLDER"]); });
+
+        auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         double qps = static_cast<double>(duration) / 1000.0;
-        double total_queries=static_cast<double>(size_of_query_items);
+        double total_queries = static_cast<double>(size_of_query_items);
         double res = total_queries / qps;
         // // // Output the time taken
         std::cout << "Time taken for post_filtering in microseconds: " << "For:  " << total_efs[i] << "Time:   " << res << std::endl;
 
+        // This block runs only once to compute ground truth data for evaluation purposes.
+        // The `break` ensures it executes only during the first iteration of an outer loop (not shown here).
+        // Other parts of the code remain commented, but they do not cause any issues if left as is.
+        for (int j = 0; j < size_of_query_items; j++)
+        {
+            alg_hnsw->ground_truth_point_predicate(query_data + (j * dim), 15, query_attributes[j], j, constants["GROUNDTRUTHFILE"] );
+        }
+        break; // Ensures this block runs only once
     }
+    // un comment only when you need to compute the ground truth as well Run it once
 
     alg_hnsw->freeMemory();
 

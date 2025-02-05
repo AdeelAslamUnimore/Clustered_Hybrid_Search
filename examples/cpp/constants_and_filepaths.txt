@@ -9,3 +9,4 @@ META_DATA_PATH /home/Data/metadata.csv
 QUERIES_PATH /home/Data/queries.csv
 RESULTFOLDER /home/RESULT/results.csv
 DATASETFILE /home/Data/dataset.csv
+GROUNDTRUTHFILE /home/Data/Groundtruth.csv

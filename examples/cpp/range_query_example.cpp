@@ -237,21 +237,21 @@ int main()
     // std::string QUERIES_PATH=constants["QUERIESPATH"];
     int dim = std::stoi(constants["DIM"]);
     int cluster_size = std::stoi(constants["CLUSTERSIZE"]);
-    int popularity_threshold=std::stoi(constants["POPULARITYTHRESHOLDPOINT"]);
+    double popularity_threshold = std::stod(constants["POPULARITYTHRESHOLDPOINT"]);
     hnswlib::L2Space space(dim);
     std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData(constants["METADATAPATH"]);
     int max_elements = metaData.size();
     hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, constants["INDEXPATH"], metaData, max_elements);
     // Construct the clusters and maintain the count-min sketch
     alg_hnsw->clustering_for_cdf_range_filtering_int(cluster_size);
-   
+
     // Reading the queries with attributes
     std::ifstream file(constants["QUERIESPATH"]);
     std::vector<unsigned int> left_range;
     std::vector<unsigned int> right_range;
     std::vector<std::vector<float>> total_embeddings;
     std::vector<std::vector<char *>> query_preds;
-   // std::vector<std::vector<std::string>> query_preds_string;
+    // std::vector<std::vector<std::string>> query_preds_string;
     std::string line;
     // Read the file line by line
     int count = 0;
@@ -262,17 +262,16 @@ int main()
     {
 
         std::stringstream ss(line);
-        std::string  embedding, right_range, left_range;
-        
+        std::string embedding, right_range, left_range;
+
         getline(ss, embedding, ';');
 
         getline(ss, left_range, ';');
         getline(ss, right_range, ';');
-        
+
         unsigned int left_r = std::stoul(left_range);
         unsigned int right_r = std::stoul(right_range);
 
-    
         vector<float> embeddingVector;
 
         if (!isNullOrEmpty(embedding))
@@ -290,10 +289,10 @@ int main()
             }
         }
     }
-   
+
     file.close();
 
-// Total EFS which further used for exploratory search on HNSW
+    // Total EFS which further used for exploratory search on HNSW
     int total_efs[] = {
         20,
         40,
@@ -308,7 +307,7 @@ int main()
         1000, 1200, 1500, 1700, 1900, 2100
 
     };
-    //Number of queries
+    // Number of queries
     int size_of_query_items = total_embeddings.size();
 
     float *query_data = new float[dim * size_of_query_items];
@@ -338,23 +337,30 @@ int main()
         alg_hnsw->setEf(total_efs[i]);
 
         auto start = std::chrono::high_resolution_clock::now();
+        // 40 is the number of threads and 10 is the top 10
         ParallelFor(0, size_of_query_items, 40, [&](size_t row, size_t threadId)
-                    { 
-                       alg_hnsw-> rangeSearch(query_data + (row * dim),10, left_range[row], right_range[row], row, total_efs[i]);                        
-                        });
-   
-         auto end = std::chrono::high_resolution_clock::now();
+                    { alg_hnsw->rangeSearch(query_data + (row * dim), 10, left_range[row], right_range[row], row, total_efs[i], popularity_threshold, constants["RESULTFOLDER"]); });
+
+        auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         double qps = static_cast<double>(duration) / 1000.0;
-        double total_queries=static_cast<double>(size_of_query_items);
+        double total_queries = static_cast<double>(size_of_query_items);
         double res = total_queries / qps;
         // // // Output the time taken
         std::cout << "Time taken for post_filtering in microseconds: " << "For:  " << total_efs[i] << "Time:   " << res << std::endl;
 
+        // This block runs only once to compute ground truth data for evaluation purposes.
+        // The `break` ensures it executes only during the first iteration of an outer loop (not shown here).
+        // Other parts of the code remain commented, but they do not cause any issues if left as is.
+        for (int j = 0; j < size_of_query_items; j++)
+        {
+           alg_hnsw->ground_truth_computer_for_predicate(query_data + (i * dim), 15, left_range[i], right_range[i], i, constants["GROUNDTRUTHFILE"]);
+        }
+        break; // Ensures this block runs only once
     }
 
-    alg_hnsw->freeMemory();
-
-   
     
+
+
+    alg_hnsw->freeMemory();
 }
