@@ -91,7 +91,7 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
 std::unordered_map<std::string, std::string> reading_constants()
 {
     std::unordered_map<std::string, std::string> constants; // Store values as strings
-    std::ifstream file("../exampleFolder/constants.txt");
+    std::ifstream file("../examples/cpp/constants_and_filepaths.txt");
 
     if (!file)
     {
@@ -227,25 +227,20 @@ int main()
 {
 
     std::unordered_map<std::string, std::string> constants = reading_constants();
-    // Retrieve values
-    // std::string DIM = constants["DIM"];
-    // std::string CLUSTERSIZE = constants["CLUSTERSIZE"];
-    // std::string POPULARITY_THRESHOLD_POINT = constants["POPULARITYTHRESHOLDPOINT"];
-    // std::string POPULARITY_THRESHOLD_CDF = constants["POPULARITYTHRESHOLDCDF"];
-    // std::string INDEX_PATH = constants["INDEXPATH"];
-    // std::string META_DATA_PATH = constants["METADATAPATH"];
-    // std::string QUERIES_PATH=constants["QUERIESPATH"];
+   
+    
     int dim = std::stoi(constants["DIM"]);
     int cluster_size = std::stoi(constants["CLUSTERSIZE"]);
-    int popularity_threshold = std::stoi(constants["POPULARITYTHRESHOLDPOINT"]);
+    int popularity_threshold = std::stoi(constants["POPULARITY_THRESHOLD_POINT"]);
     hnswlib::L2Space space(dim);
-    std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData(constants["METADATAPATH"]);
+    std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData(constants["META_DATA_PATH"]);
     int max_elements = metaData.size();
-    hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, constants["INDEXPATH"], metaData, max_elements);
+    
+    hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, constants["INDEX_PATH"], metaData, max_elements);
     // Construct the clusters and maintain the count-min sketch
     alg_hnsw->clustering_and_maintaining_sketch(cluster_size);
     // Reading the queries with attributes
-    std::ifstream file(constants["QUERIESPATH"]);
+    std::ifstream file(constants["QUERIES_PATH"]);
     std::vector<std::vector<float>> total_embeddings;
     std::vector<std::vector<char *>> query_attributes;
     std::string line;
@@ -343,7 +338,8 @@ int main()
         double res = total_queries / qps;
         // // // Output the time taken
         std::cout << "Time taken for post_filtering in microseconds: " << "For:  " << total_efs[i] << "Time:   " << res << std::endl;
-
+       
+        continue; // Remove this if compute the ground truth
         // This block runs only once to compute ground truth data for evaluation purposes.
         // The `break` ensures it executes only during the first iteration of an outer loop (not shown here).
         // Other parts of the code remain commented, but they do not cause any issues if left as is.

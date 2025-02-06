@@ -167,7 +167,7 @@ namespace hnswlib
             SpaceInterface<dist_t> *s,
             const std::string &location,
             std::unordered_map<tableint, std::vector<char *>> &meta_data_predicates_,
-            int total_elememt,
+            size_t total_element,
             bool nmslib = false,
             size_t max_elements = 0,
             bool allow_replace_deleted = false)
@@ -175,7 +175,8 @@ namespace hnswlib
         {
             loadIndex(location, s, max_elements);
             // Initilization
-            max_elements_ = total_elememt;
+            max_elements_ = total_element;
+
             meta_data_predicates = meta_data_predicates_;
             clusterIDs = new unsigned int[max_elements_]();
             // Initializing it when there is no file their.
@@ -193,6 +194,8 @@ namespace hnswlib
             const std::string &location,
             std::unordered_map<unsigned int, unsigned int> &meta_data_int,
             int total_elememt,
+            bool nmslib = false,
+            size_t max_elements = 0,
             bool allow_replace_deleted = false)
             : allow_replace_deleted_(allow_replace_deleted)
         {
@@ -1059,6 +1062,7 @@ namespace hnswlib
 
         void saveIndex(const std::string &location)
         {
+            cout << "Location" << location << endl;
             std::ofstream output(location, std::ios::binary);
             std::streampos position;
 
@@ -1104,12 +1108,15 @@ namespace hnswlib
 
             readBinaryPOD(input, offsetLevel0_);
             readBinaryPOD(input, max_elements_);
+
             readBinaryPOD(input, cur_element_count);
 
             size_t max_elements = max_elements_i;
             if (max_elements < cur_element_count)
                 max_elements = max_elements_;
+
             max_elements_ = max_elements;
+
             readBinaryPOD(input, size_data_per_element_);
             readBinaryPOD(input, label_offset_);
             readBinaryPOD(input, offsetData_);
@@ -1917,7 +1924,7 @@ namespace hnswlib
 
         // Creating cluster, 2) in parameter pass the size of cluster for new one.
         // Count Min sketch to hold the frequency of data items
-        // Bloom filter is Just populated for frequent search.
+        //Two-hop-exploration from each new node
         void clustering_and_maintaining_sketch(tableint sizeOfCluster)
         {
             // Define the memory block for Disk optimization access;
@@ -1980,12 +1987,7 @@ namespace hnswlib
                     bit_manipulation(candidateId, clusterNumber);
                     bit_manipulation_short(candidateId, clusterNumber);
                     counterForFilter++;
-                    // }
 
-                    // // Two hop insertion
-                    // for (size_t j = 0; j < size; j++)
-                    // {
-                    // tableint candidateId = *(datal + j);
                     int *twoHopData = (int *)get_linklist0(candidateId);
                     size_t twoHopSize = getListCount((linklistsizeint *)twoHopData);
                     tableint *twoHopDatal = (tableint *)(twoHopData + 1);
@@ -2011,36 +2013,21 @@ namespace hnswlib
                 // Updating the data structure after insertion
                 if (counterForFilter >= sizeOfCluster)
                 {
-                    // cout<<"counterForFilter::: "<<counterForFilter<<endl;
 
                     mapForCMS[clusterNumber] = cms[cms_counter]; // Store the CMS
 
-                    // Writing for testing
-                    // cms[cms_counter].saveToFile("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
-
-                    // mapForCMS[clusterNumber].saveToFile("/data4/hnsw/paper/Clusters/CMS_256_512/" + std::to_string(clusterNumber) + ".bin");
                     clusterNumber++;
                     cms_counter++;
                     cms.push_back(CountMinSketchMinHash());
                     //  cms[clusterNumber-1]= CountMinSketchMinHash();
                     counterForFilter = 0;
-
-                    // cms_init(&cms, count_min_width, count_min_height);         // Reinitialize the CMS
-                    // bloom_filter_init(&bloom_filter, bloom_filter_size, 0.05); //  bloom_filter.clear();                                // Clear the Bloom filter (if applicable)
                 }
             }
             // All  remaining insertion
             if (counterForFilter > 0)
             {
 
-                // mapForBF[clusterNumber] = std::move(bloom_filter);
                 mapForCMS[clusterNumber] = cms[cms_counter];
-                //  cms[cms_counter].saveToFile("/data3/""/CMS_size/" + std::to_string(clusterNumber) + ".bin");
-
-                // mapForCMS[clusterNumber].saveToFile("/data4/hnsw/paper/Clusters/CMS_256_512/" + std::to_string(clusterNumber) + ".bin");
-
-                // Writing IDS
-                //  writeIdsAndClusterRelationShip("/data4/hnsw/paper/Clusters//map_256_512.bin", "/data4/hnsw/paper/Clusters//short_256_512.bin");
             }
         }
 
@@ -2562,8 +2549,7 @@ namespace hnswlib
                     dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
                     ground_truth_for_queries.emplace_back(j, dist1);
                 }
-
-                            }
+            }
 
             // Sort the results based on the distance (second element in pair)
             std::sort(ground_truth_for_queries.begin(), ground_truth_for_queries.end(),
@@ -2573,7 +2559,7 @@ namespace hnswlib
                       });
 
             // Save results to CSV
-            save_to_csv(ground_truth_for_queries, path+"/Q" + std::to_string(query_num) + ".csv");
+            save_to_csv(ground_truth_for_queries, path + "/Q" + std::to_string(query_num) + ".csv");
         }
         /*This function is saving the data to the file of ground truth*/
         void save_to_csv(const std::vector<std::pair<int, float>> &data, const std::string &filename)
@@ -4839,7 +4825,6 @@ namespace hnswlib
                     char *currObj1 = (getDataByInternalId(j));
 
                     dist_t dist1 = fstdistfunc_(query_data, currObj1, dist_func_param_);
-                    
 
                     ground_truth_for_queries.emplace_back(j, dist1);
                     counterF++;

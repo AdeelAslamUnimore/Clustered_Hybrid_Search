@@ -91,7 +91,7 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
 std::unordered_map<std::string, std::string> reading_constants()
 {
     std::unordered_map<std::string, std::string> constants; // Store values as strings
-    std::ifstream file("../exampleFolder/constants.txt");
+    std::ifstream file("../examples/cpp/constants_and_filepaths.txt");
 
     if (!file)
     {

@@ -91,7 +91,7 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
 std::unordered_map<std::string, std::string> reading_constants()
 {
     std::unordered_map<std::string, std::string> constants; // Store values as strings
-    std::ifstream file("../exampleFolder/constants.txt");
+    std::ifstream file("../examples/cpp/constants_and_filepaths.txt");
 
     if (!file)
     {
@@ -158,6 +158,7 @@ bool isNullOrEmpty(const string &str)
  * @brief Reads data from the specified file and extracts embeddings and predicates.
  *
  * This function reads a file containing data in a specific format, where each line consists of an embedding vector (represented as a comma-separated string)
+ * The format is in the form of schema (Records are seperated by ";" where as embedding are seperated by ",")
  * and optionally additional information (e.g., predicates like clinical areas). It processes each line to convert the embedding into a vector of floats and
  * stores it in a vector if the embedding has the correct dimensionality (specified by the 'dim' parameter). Optionally, additional predicates can also be
  * processed and stored. The function returns a pair containing two vectors:
@@ -186,27 +187,25 @@ pair<vector<std::vector<float>>, vector<vector<char *>>> reading_files(std::stri
 
     while (getline(file, line))
     {
-
+        
         std::stringstream ss(line);
         std::string embedding;
-
         getline(ss, embedding, ';');
 
         // Initialize vectors
 
         vector<float> embeddingVector;
-        vector<char *> clinicalAreasVector;
+       
 
         if (!isNullOrEmpty(embedding)) // && !isNullOrEmpty(dateCreated)
         {
-            // Split clinicalAreas and embedding
+            // split the embeddings 
             embeddingVector = splitToFloat(embedding, ',');
-            // clinicalAreasVector = splitString(dateCreated, ',');
-            // Here do one thing
-
-            if (embeddingVector.size() == dim) // 768 for clinical data
+            
+            
+            if (embeddingVector.size() == dim) // 768 for Tripclick data
             {
-
+                
                 total_embeddings.push_back(embeddingVector);
                 // predicates.push_back(clinicalAreasVector);
             }
@@ -222,14 +221,7 @@ int main()
 {
 
     std::unordered_map<std::string, std::string> constants = reading_constants();
-    // Retrieve values
-    // std::string DIM = constants["DIM"];
-    // std::string CLUSTERSIZE = constants["CLUSTERSIZE"];
-    // std::string POPULARITY_THRESHOLD_POINT = constants["POPULARITYTHRESHOLDPOINT"];
-    // std::string POPULARITY_THRESHOLD_CDF = constants["POPULARITYTHRESHOLDCDF"];
-    // std::string INDEX_PATH = constants["INDEXPATH"];
-    // std::string META_DATA_PATH = constants["METADATAPATH"];
-    // std::string QUERIES_PATH=constants["QUERIESPATH"];
+    
     int dim = std::stoi(constants["DIM"]); // Dimension of the elements
     int M = std::stoi(constants["M"]);     // Tightly connected with internal dimensionality of the data
                                            // strongly affects the memory consumption
@@ -237,6 +229,7 @@ int main()
 
     pair<vector<std::vector<float>>, vector<vector<char *>>> data_vectors = reading_files(constants["DATASETFILE"], dim);
     int max_elements = data_vectors.first.size();
+    
     hnswlib::L2Space space(dim);
     hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, max_elements, M, ef_construction);
 
@@ -266,5 +259,5 @@ int main()
                     alg_hnsw->addPoint((void *)(data + dim * row), row);
                 });
 
-    alg_hnsw->saveIndex(constants["INDEXPATH"]);
+    alg_hnsw->saveIndex(constants["INDEX_PATH"]);
 }

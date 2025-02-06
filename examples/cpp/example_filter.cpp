@@ -120,14 +120,7 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
 int main()
 {
 
-    std::string filePath = "../exampleFolder/constants.txt";  // Use relative path
-
-    std::ifstream file(filePath);
-    if (!file) {
-        std::cerr << "Error opening file: " << filePath << std::endl;
-        return 1;
-    }
-
+   
 
     std::map<unsigned int, Vertex<std::string> *> searchMap;
 
@@ -302,7 +295,7 @@ int main()
         ParallelFor(0, size_of_query_items, 40, [&](size_t row, size_t threadId)
                     {
                      //  alg_hnsw-> postFilteringApproachesRange(query_data + (row * dim),10, left_range[row], right_range[row], row, total_efs[i]);
-                        alg_hnsw-> rangeSearch(query_data + (row * dim),10, left_range[row], right_range[row], row, total_efs[i]);
+                       // alg_hnsw-> rangeSearch(query_data + (row * dim),10, left_range[row], right_range[row], row, total_efs[i]);
 
                         //     //             // alg_hnsw->rangeSearch(query_data + (row * dim), 30, left_range[row], right_range[row], row, total_efs[i]);
                         //     //             //     / alg_hnsw->addPoint((void *)(data + dim * row), row);
