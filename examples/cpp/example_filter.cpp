@@ -247,7 +247,7 @@ int main()
 
     //     //    // vector<std::vector<float>> query_items = query_vectors.first;
     // 20, 40, 60, 100, 200, 300, 400, 500, 600, 800, 1000, 1200, 1500,1700, 1900, 2100, 2400, 2700, 3000, 3200, 3400, 3600,3800, 4000
-
+ 
     int total_efs[] = {
         20,
         40,
@@ -264,7 +264,7 @@ int main()
     };
     int size_of_query_items = total_embeddings.size();
 
-    float *query_data = new float[dim * size_of_query_items];
+   float *query_data = new float[dim * size_of_query_items];
     int index_of_query_vector = 0;
 
     for (const auto &vec : total_embeddings)

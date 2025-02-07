@@ -227,26 +227,21 @@ int main()
 {
 
     std::unordered_map<std::string, std::string> constants = reading_constants();
-    // Retrieve values
-    // std::string DIM = constants["DIM"];
-    // std::string CLUSTERSIZE = constants["CLUSTERSIZE"];
-    // std::string POPULARITY_THRESHOLD_POINT = constants["POPULARITYTHRESHOLDPOINT"];
-    // std::string POPULARITY_THRESHOLD_CDF = constants["POPULARITYTHRESHOLDCDF"];
-    // std::string INDEX_PATH = constants["INDEXPATH"];
-    // std::string META_DATA_PATH = constants["METADATAPATH"];
-    // std::string QUERIES_PATH=constants["QUERIESPATH"];
+    
     int dim = std::stoi(constants["DIM"]);
-    int cluster_size = std::stoi(constants["CLUSTERSIZE"]);
-    double popularity_threshold = std::stod(constants["POPULARITYTHRESHOLDPOINT"]);
+   
+    int cluster_size = std::stoi(constants["CLUSTER_SIZE"]);
+   
+    double popularity_threshold = std::stod(constants["POPULARITY_THRESHOLD_POINT"]);
     hnswlib::L2Space space(dim);
-    std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData(constants["METADATAPATH"]);
+    std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData(constants["META_DATA_PATH"]);
     int max_elements = metaData.size();
-    hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, constants["INDEXPATH"], metaData, max_elements);
+    hnswlib::HierarchicalNSW<float> *alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, constants["INDEX_PATH"], metaData, max_elements);
     // Construct the clusters and maintain the count-min sketch
     alg_hnsw->clustering_for_cdf_range_filtering_int(cluster_size);
 
     // Reading the queries with attributes
-    std::ifstream file(constants["QUERIESPATH"]);
+    std::ifstream file(constants["QUERIES_PATH"]);
     std::vector<unsigned int> left_range;
     std::vector<unsigned int> right_range;
     std::vector<std::vector<float>> total_embeddings;
@@ -352,15 +347,15 @@ int main()
         // This block runs only once to compute ground truth data for evaluation purposes.
         // The `break` ensures it executes only during the first iteration of an outer loop (not shown here).
         // Other parts of the code remain commented, but they do not cause any issues if left as is.
-        for (int j = 0; j < size_of_query_items; j++)
-        {
-           alg_hnsw->ground_truth_computer_for_predicate(query_data + (i * dim), 15, left_range[i], right_range[i], i, constants["GROUNDTRUTHFILE"]);
-        }
-        break; // Ensures this block runs only once
+        // for (int j = 0; j < size_of_query_items; j++)
+        // {
+        //    alg_hnsw->ground_truth_computer_for_predicate(query_data + (i * dim), 15, left_range[i], right_range[i], i, constants["GROUND_TRUTH_FILE"]);
+        // }
+        // break; // Ensures this block runs only once
     }
 
     
 
-
+        delete[] query_data;
     alg_hnsw->freeMemory();
 }

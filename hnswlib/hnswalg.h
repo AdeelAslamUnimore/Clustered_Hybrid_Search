@@ -2781,12 +2781,7 @@ namespace hnswlib
             }
             mapForBF.clear(); // Clear the map after destruction
 
-            for (auto it = cluster_and_associated_tree.begin(); it != cluster_and_associated_tree.end(); ++it)
-            {
-                delete it->second; // Delete the BLinkTree pointer
-            }
-            cluster_and_associated_tree.clear();
-
+            
             // Cleaning Metadata by deallocating its pointer it is specially for Multidiemensional query
             for (auto &[key, value_pair] : meta_data_multidiemesional_query)
             {
@@ -2807,6 +2802,7 @@ namespace hnswlib
             meta_data_multidiemesional_query.clear();
             // Clear the memory allocated during disk optimization:
             free(bit_array_for_disk_access);
+            free(mem_for_ids_clusters);
         }
         // Write the map to the
         void writeIdsAndClusterRelationShip(const std::string &clusterFile, const std::string &shortFile)

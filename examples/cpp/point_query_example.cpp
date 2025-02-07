@@ -230,7 +230,7 @@ int main()
    
     
     int dim = std::stoi(constants["DIM"]);
-    int cluster_size = std::stoi(constants["CLUSTERSIZE"]);
+    int cluster_size = std::stoi(constants["CLUSTER_SIZE"]);
     int popularity_threshold = std::stoi(constants["POPULARITY_THRESHOLD_POINT"]);
     hnswlib::L2Space space(dim);
     std::unordered_map<unsigned int, std::vector<char *>> metaData = reading_metaData(constants["META_DATA_PATH"]);
