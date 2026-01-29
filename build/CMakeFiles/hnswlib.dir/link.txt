@@ -1,0 +1,2 @@
+/usr/bin/ar qc libhnswlib.a CMakeFiles/hnswlib.dir/predictive_point_queries/count_min_sketch_min_hash.cpp.o
+/usr/bin/ranlib libhnswlib.a

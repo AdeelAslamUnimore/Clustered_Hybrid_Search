@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <unordered_set>
+#include <unordered_map>
 #include <list>
 #include <memory>
 
@@ -312,8 +313,8 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
         tableint ep_id,
         const void *data_point,
         size_t ef,
-        BaseFilterFunctor* isIdAllowed = nullptr,
-        BaseSearchStopCondition<dist_t>* stop_condition = nullptr) const {
+        BaseFilterFunctor* isIdAllowed = nullptr, 
+        BaseSearchStopCondition<dist_t>* stop_condition = nullptr,  std::unordered_map<tableint, dist_t> *distance_map=nullptr) const {
         VisitedList *vl = visited_list_pool_->getFreeVisitedList();
         vl_type *visited_array = vl->mass;
         vl_type visited_array_tag = vl->curV;
@@ -326,6 +327,9 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
             (!isMarkedDeleted(ep_id) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(ep_id))))) {
             char* ep_data = getDataByInternalId(ep_id);
             dist_t dist = fstdistfunc_(data_point, ep_data, dist_func_param_);
+           // if (distance_map != nullptr) {
+                (*distance_map)[ep_id] = dist;
+            //}
             lowerBound = dist;
             top_candidates.emplace(dist, ep_id);
             if (!bare_bone_search && stop_condition) {
@@ -387,7 +391,9 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
 
                     char *currObj1 = (getDataByInternalId(candidate_id));
                     dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-
+                    
+                        (*distance_map)[candidate_id] = dist;
+               
                     bool flag_consider_candidate;
                     if (!bare_bone_search && stop_condition) {
                         flag_consider_candidate = stop_condition->should_consider_candidate(dist, lowerBound);
@@ -1323,17 +1329,13 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
         return result;
     }
 
-
-    std::vector<std::pair<dist_t, labeltype >>
-    searchStopConditionClosest(
-        const void *query_data,
-        BaseSearchStopCondition<dist_t>& stop_condition,
-        BaseFilterFunctor* isIdAllowed = nullptr) const {
-        std::vector<std::pair<dist_t, labeltype >> result;
-        if (cur_element_count == 0) return result;
-
+    // Search condition for top-candidates for predictive filter
+    std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>
+    searchKnnForPredictiveStructures(const void *query_data, size_t k, std::unordered_map<tableint, dist_t> *distance_map=nullptr, BaseFilterFunctor* isIdAllowed = nullptr) const {
+      
         tableint currObj = enterpoint_node_;
         dist_t curdist = fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
+        (*distance_map)[currObj] = curdist;
 
         for (int level = maxlevel_; level > 0; level--) {
             bool changed = true;
@@ -1352,7 +1354,8 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
                     if (cand < 0 || cand > max_elements_)
                         throw std::runtime_error("cand error");
                     dist_t d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
-
+                    
+                    (*distance_map)[cand] = d;
                     if (d < curdist) {
                         curdist = d;
                         currObj = cand;
@@ -1363,20 +1366,18 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
         }
 
         std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
-        top_candidates = searchBaseLayerST<false>(currObj, query_data, 0, isIdAllowed, &stop_condition);
-
-        size_t sz = top_candidates.size();
-        result.resize(sz);
-        while (!top_candidates.empty()) {
-            result[--sz] = top_candidates.top();
-            top_candidates.pop();
+        bool bare_bone_search = !num_deleted_ && !isIdAllowed;
+        if (bare_bone_search) {
+            top_candidates = searchBaseLayerST<true>(
+                    currObj, query_data, std::max(ef_, k), isIdAllowed, nullptr, distance_map);
+        } else {
+            top_candidates = searchBaseLayerST<false>(
+                    currObj, query_data, std::max(ef_, k), isIdAllowed, nullptr, distance_map);
         }
 
-        stop_condition.filter_results(result);
-
-        return result;
+    
+        return top_candidates;
     }
-
 
     void checkIntegrity() {
         int connections_checked = 0;

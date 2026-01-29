@@ -1,0 +1,1 @@
+/usr/bin/c++ -Ofast -lrt -std=c++11 -DHAVE_CXX0X -march=native -fpic -w -fopenmp -ftree-vectorize -ftree-vectorizer-verbose=0 -g CMakeFiles/example_point_search.dir/examples/cpp/example_point_search.cpp.o -o example_point_search  libhnswlib.a /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.so /usr/lib/x86_64-linux-gnu/libpthread.a 
