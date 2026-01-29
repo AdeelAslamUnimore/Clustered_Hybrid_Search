@@ -1,2 +1,1 @@
-TKDE Review
-This is my seocond 
+How to Clone: git clone -b master https://github.com/AdeelAslamSoton/TKDEReview.git
