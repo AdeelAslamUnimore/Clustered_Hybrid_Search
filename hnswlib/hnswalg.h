@@ -1279,7 +1279,7 @@ class HierarchicalNSW : public AlgorithmInterface<dist_t> {
         if (cur_element_count == 0) return result;
 
         tableint currObj = enterpoint_node_;
-        dist_t curdist = fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
+        dist_t curdist = fstdistfunc_(query_data, this->getDataByInternalId(enterpoint_node_), dist_func_param_);
 
         for (int level = maxlevel_; level > 0; level--) {
             bool changed = true;

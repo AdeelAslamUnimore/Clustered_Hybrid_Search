@@ -16,8 +16,6 @@
 using namespace std;
 pair<vector<vector<float>>, vector<string>> reading_files(const string &file_path, int &dim, bool queries);
 
-
-
 vector<float> splitToFloat(const string &str, char delimiter)
 {
     vector<float> tokens;
@@ -109,22 +107,20 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
 int main()
 {
 
-    int dim = 128;
+    int dim = 768;
     // Dimension of the elements
 
-    int M = 16;
+    int M = 128;
     // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
-    int ef_construction = 64;
+    int ef_construction = 200;
     // Controls index search speed/build speed tradeoff
     int num_threads = 40; // Number of threads for operations with index
 
     // For True if you have already index it is only for construction of index
     hnswlib::L2Space space(dim);
 
-   
-
-    auto [embeddings, string_ids] = reading_files("/home/aa5f25/siftsmall/siftsmall_docs.csv", dim, false);
+    auto [embeddings, string_ids] = reading_files("/scratch/aa5f25/datasets/TripClick/documents_full.csv", dim, false);
     int max_elements = embeddings.size();
 
     // Map int -> string IDs
@@ -135,7 +131,6 @@ int main()
         for (int j = 0; j < dim; j++)
             data[i * dim + j] = embeddings[i][j];
         id_map[i] = string_ids[i];
-        
     }
     //  qwery_aware::QweryAwareHNSW<float> *alg_query_aware = new qwery_aware::QweryAwareHNSW<float>(&space, max_elements);
 
@@ -144,7 +139,7 @@ int main()
     // Build HNSW index
     ParallelFor(0, max_elements, num_threads, [&](size_t row, size_t threadId)
                 { alg_query_aware->addPoint((void *)(data + dim * row), (int)row); });
-    alg_query_aware->saveIndex("/home/aa5f25/Index/index.bin");
+    alg_query_aware->saveIndex("/scratch/aa5f25/datasets/TripClick/index.bin");
     delete[] data;
     delete alg_query_aware;
 }
@@ -166,17 +161,17 @@ pair<vector<vector<float>>, vector<string>> reading_files(const string &file_pat
         string embedding, attribute, skip;
         if (!queries)
         {
-
-            // getline(ss, skip, ';');
-            getline(ss, embedding, ';');
             getline(ss, attribute, ';');
+            getline(ss, skip, ';');
+            getline(ss, embedding, ';');
+
             //  getline(ss, embedding, ';');
         }
         else
         {
-            // getline(ss, skip, ';');
-            getline(ss, embedding, ';');
             getline(ss, attribute, ';');
+            getline(ss, skip, ';');
+            getline(ss, embedding, ';');
         }
         if (!isNullOrEmpty(embedding))
         {

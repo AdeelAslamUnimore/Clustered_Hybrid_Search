@@ -51,7 +51,7 @@ namespace clustered_hybrid_search
             if (mem_for_ids_for_clusters == nullptr)
                 throw std::runtime_error("Not enough memory");
         }
-
+        //Clustering and maintaining the sketch for count min sketch and regression models
         void clustering_for_cms_and_cdf_filtering(tableint size_of_cluster)
         {
             // Implement clustering and sketch maintenance logic here

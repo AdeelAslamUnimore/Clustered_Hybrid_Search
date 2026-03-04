@@ -51,6 +51,24 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/hnswlib
     FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )
 
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/predictive_conjuctive_queries
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/predictive_dynamic_filter_queries
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/predictive_point_queries
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/predictive_range_queries
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
+
+
 install(EXPORT hnswlibTargets
     FILE hnswlibConfig.cmake
     NAMESPACE hnswlib::
@@ -99,6 +117,15 @@ if(HNSWLIB_EXAMPLES)
 
     add_executable(example_conjunction_search examples/cpp/example_conjunction_search.cpp)
     target_link_libraries(example_conjunction_search hnswlib)
+
+    add_executable(example_dynamic_filtering_search examples/cpp/example_dynamic_filtering_search.cpp)
+    target_link_libraries(example_dynamic_filtering_search  hnswlib)
+
+    add_executable(example_cluster_level_search examples/cpp/example_cluster_level_search.cpp)
+    target_link_libraries(example_cluster_level_search  hnswlib)
+
+    add_executable(example_dataset_creation examples/cpp/example_dataset_creation.cpp)
+    target_link_libraries(example_dataset_creation  hnswlib)
     # tests
 
 endif()

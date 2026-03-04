@@ -22,6 +22,8 @@ CountMinSketchMinHash::CountMinSketchMinHash()
     unsigned int i, j;
     // This is just conisdering the fingureprint for eight bits laterly we can extend it to more bits
     full_keys = std::vector<std::vector<std::set<uint16_t>>>(d, std::vector<std::set<uint16_t>>(w)); // Employed only for holding the complete keys. // 16 bits
+
+    cluster_starting_indexes = std::vector<size_t>(); // Initialize cluster starting indexes to 0
     // intilization for each counter in the count min sketch
     for (i = 0; i < d; i++)
     {
@@ -40,6 +42,7 @@ CountMinSketchMinHash::CountMinSketchMinHash()
         hashes[i] = new int[2];
         genajbj(hashes, i);
     }
+    total =0;
 }
 // compute the total count of items in CMS
 unsigned int CountMinSketchMinHash::totalcount()
@@ -62,7 +65,7 @@ void CountMinSketchMinHash::update_vector(int item, int id, int c)
         hashval = (hashval % w + w) % w;
 
         C[j][hashval] += c;
-
+      
         //-------------------------------
         // Min-hash update with 16-bit fingerprint
         // -------------------------------
@@ -83,7 +86,7 @@ void CountMinSketchMinHash::update_vector(int item, int id, int c)
         }
     }
 
-    
+      total += c;
 }
 
 // Update the count min sketch for string item
@@ -136,13 +139,19 @@ std::pair<unsigned int, unsigned int> CountMinSketchMinHash::estimate(const std:
 // generates aj,bj from field Z_p for use in hashing
 void CountMinSketchMinHash::genajbj(int **hashes, int i)
 {
-    std::random_device rd;
-    std::mt19937 gen(rd()); // Mersenne Twister random number generator
+    // std::random_device rd;
+    // std::mt19937 gen(rd()); // Mersenne Twister random number generator
 
-    // Define a uniform distribution in the range [1, LONG_PRIME]
-    std::uniform_int_distribution<long> dist(1, LONG_PRIME);
-    hashes[i][0] = dist(gen); // Independent value for first component
-    hashes[i][1] = dist(gen);
+    // // Define a uniform distribution in the range [1, LONG_PRIME]
+    // std::uniform_int_distribution<uint64_t> dist(1, LONG_PRIME-1);
+    // hashes[i][0] = dist(gen); // Independent value for first component
+    // hashes[i][1] = dist(gen);
+        // For testing purposes, you can use fixed values for aj and bj
+    static const unsigned int A[4] = {73856093, 19349663, 83492791, 15485863};
+    static const unsigned int B[4] = {83492791, 73856093, 19349663, 32452843};
+
+    hashes[i][0] = A[i % 4];
+    hashes[i][1] = B[i % 4];
 }
 
 uint64_t CountMinSketchMinHash::MurmurHash64B(const void *key, int len, unsigned int seed)
@@ -224,4 +233,9 @@ unsigned int CountMinSketchMinHash::hashstr(const std::string &str)
     }
 
     return hash;
+}
+
+std::vector<size_t> CountMinSketchMinHash::get_cluster_starting_indexes () const
+{
+    return cluster_starting_indexes;
 }

@@ -35,6 +35,8 @@ struct CountMinSketchMinHash
 
   // array of arrays of counters
   int **C;
+  // Vector count
+  std::vector<std::vector<int>> vector_count;
 
   // array of hash values for a particular item
   // contains two element arrays {aj,bj}
@@ -46,6 +48,8 @@ struct CountMinSketchMinHash
   unsigned int seed = 42;
   // To hold complete keys
   std::vector<std::vector<std::set<uint16_t>>> full_keys;
+  // vector to hold the starting indexes of clustering
+  std::vector<size_t> cluster_starting_indexes;
 
   void genajbj(int **hashes, int i);
 
@@ -65,6 +69,8 @@ public:
 
   // return total count
   unsigned int totalcount();
+
+ std::vector<size_t> get_cluster_starting_indexes () const;//{// return cluster_starting_indexes; // }
 
   // generates a hash value for a string
   // same as djb2 hash function

@@ -1,5 +1,6 @@
 #include "../../hnswlib/hnswlib.h"
 #include "../../predictive_point_queries/predictive_point_hnsw.h"
+#include "../../predictive_dynamic_filter_queries/predictive_dynamic_filtering.h"
 #include <thread>
 #include <algorithm>
 #include <sys/stat.h>
@@ -188,18 +189,22 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
 void batch_process_queries(clustered_hybrid_search::PredictivePointHNSW<float> *alg_query_aware, float *query_data, std::vector<std::vector<std::string>> &queries_meta_data, std::unordered_map<unsigned int, std::vector<std::string>> &meta_data, int dim, size_t num_threads);
 int main(int argc, char const *argv[])
 {
+
     /* code */
-    int dim = 128;
-    std::unordered_map<unsigned int, std::vector<std::string>> meta_data = reading_meta_data("/home/aa5f25/siftsmall/siftsmall_docs.csv");
+    int dim = 200;
+    std::unordered_map<unsigned int, std::vector<std::string>> meta_data = reading_meta_data("/scratch/aa5f25/datasets/paper/paper_docs.csv");
     int max_elements = meta_data.size();
     hnswlib::L2Space space(dim);
-    clustered_hybrid_search::PredictivePointHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictivePointHNSW<float>(&space, max_elements, "/home/aa5f25/Index/index.bin", meta_data); // Load existing index
-    alg_query_aware->clustering_and_maintaining_sketches(80);
 
-    pair<vector<vector<float>>, vector<vector<string>>> query_reading_results = reading_queries("/home/aa5f25/siftsmall/siftsmall_queries.csv", dim);
+    clustered_hybrid_search::PredictivePointHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictivePointHNSW<float>(&space, max_elements, "/home/aa5f25/Index/index.bin", meta_data); // Load existing index
+    alg_query_aware->clustering_and_maintaining_sketches(10000);
+
+    pair<vector<vector<float>>, vector<vector<string>>> query_reading_results = reading_queries("/scratch/aa5f25/datasets/paper/paper_queries.csv", dim);
+    std::cout << "Read all queries" << std::endl;
     float *query_data = new float[dim * query_reading_results.first.size()];
     int index_of_query_vector = 0;
     int size_of_query_items = query_reading_results.first.size();
+
     for (const auto &vec : query_reading_results.first)
     {
 
@@ -224,7 +229,7 @@ int main(int argc, char const *argv[])
         query_data,
         query_reading_results.second,
         meta_data,
-        dim, 5);
+        dim, 40);
     // /*num_threads=*/8);
     // alg_query_aware->freeMemory();
     delete[] query_data;
@@ -251,10 +256,13 @@ reading_meta_data(const std::string &file_path)
     while (std::getline(file, line))
     {
         std::stringstream ss(line);
-        std::string embedding, attribute;
+        std::string embedding, skip, attribute, skip1, skip2, skip3, skip4;
 
         // CSV format: embedding;attribute
         std::getline(ss, embedding, ';');
+        std::getline(ss, skip, ';');
+     
+
         std::getline(ss, attribute, ';');
 
         std::vector<std::string> attr_vec;
@@ -293,9 +301,11 @@ pair<vector<vector<float>>, vector<vector<string>>> reading_queries(const string
     while (getline(file, line))
     {
         stringstream ss(line);
-        string embedding, attribute;
+        string embedding, skip, attribute, skip1, skip2, skip3, skip4;
 
         getline(ss, embedding, ';');
+        getline(ss, skip, ';');
+   
         getline(ss, attribute, ';');
 
         if (!isNullOrEmpty(embedding))
@@ -313,93 +323,146 @@ pair<vector<vector<float>>, vector<vector<string>>> reading_queries(const string
     return {total_embeddings, all_attributes};
 }
 
-void batch_process_queries(clustered_hybrid_search::PredictivePointHNSW<float> *alg_query_aware, float *query_data, std::vector<std::vector<std::string>> &queries_meta_data, std::unordered_map<unsigned int, std::vector<std::string>> &meta_data, int dim, size_t num_threads)
+void batch_process_queries(clustered_hybrid_search::PredictivePointHNSW<float> *alg_query_aware,
+                           float *query_data,
+                           std::vector<std::vector<std::string>> &queries_meta_data,
+                           std::unordered_map<unsigned int, std::vector<std::string>> &meta_data,
+                           int dim,
+                           size_t num_threads)
 {
-    size_t batch_size = 1000;
-    size_t total_elements = alg_query_aware->max_elements_;
-    size_t num_batches = (queries_meta_data.size() + batch_size - 1) / batch_size;
-    int counter = 0;
+    std::vector<int> ef_values = {10, 20, 60, 200, 400, 800, 1000, 1200, 1300};
 
-    for (size_t b = 0; b < num_batches; b++)
+    // Track total time per ef
+    std::unordered_map<int, double> totalTimePerEfs;
+
+    for (int ef : ef_values)
     {
+        size_t batch_size = 1000;
+        size_t total_elements = alg_query_aware->max_elements_;
+        size_t num_batches = (queries_meta_data.size() + batch_size - 1) / batch_size;
 
-        counter++;
-        size_t start = b * batch_size;
-        size_t end = std::min(start + batch_size, queries_meta_data.size());
-        // create_directory_if_not_exists(constants["FILTER_PATH"]);
-        // std::string filter_file = constants["FILTER_PATH"] + "/filter_batch_" + std::to_string(start) + ".bin";
-        std::vector<char> filter_ids_map;
+        // Set ef once per run
+        alg_query_aware->setEf(ef);
+        alg_query_aware->popularityThresoldComputation();
 
-        // if (fileExists(filter_file))
-        // {
-        //     // Load precomputed map
-        //     filter_ids_map = loadFilterMap(filter_file, (end - start) * total_elements);
-        //     //  std::cout << "✅ Loaded cached filter map for batch " << b + 1 << std::endl;
-        // }
-        // else
-        // {
-        // Compute fresh
-        // std::cout << "💾 Saving " << start << " to cache" << std::endl;
-        filter_ids_map.resize((end - start) * total_elements);
-
-        for (size_t i = start; i < end; i++)
+        for (size_t b = 0; b < num_batches; b++)
         {
-            // const std::string &attribute = queries_meta_data[i];
-            vector<string> query_attributes = queries_meta_data[i];
+            size_t start = b * batch_size;
+            size_t end = std::min(start + batch_size, queries_meta_data.size());
 
-            ParallelFor(0, alg_query_aware->max_elements_, num_threads, [&](size_t row, size_t threadId)
+            std::string filter_file =
+                "/scratch/aa5f25/datasets/paper/filters/filter_batch_" +
+                std::to_string(start) + ".bin";
+            std::vector<char> filter_ids_map;
+
+            if (fileExists(filter_file))
+            {
+                filter_ids_map =
+                    loadFilterMap(filter_file, (end - start) * total_elements);
+            }
+            else
+            {
+                std::cout << "💾 Saving " << start << " to cache" << std::endl;
+
+                filter_ids_map.resize((end - start) * total_elements);
+
+                for (size_t i = start; i < end; i++)
+                {
+                    vector<string> query_attributes = queries_meta_data[i];
+
+                    ParallelFor(
+                        0,
+                        alg_query_aware->max_elements_,
+                        60,
+                        [&](size_t row, size_t threadId)
                         {
-                   
-                    //bool match_found = (attribute == meta_data_attributes[row]);
-                    const auto &row_attributes = meta_data[row];
+                            const auto &row_attributes = meta_data[row];
+                            bool match_found = false;
 
-                        bool match_found = false;
-
-                        // Outer loop: each attribute in the query
                             for (const auto &q_attr : query_attributes)
                             {
-                                // Inner loop: each attribute in the current metadata row
                                 for (const auto &row_attr : row_attributes)
                                 {
                                     if (q_attr == row_attr)
                                     {
                                         match_found = true;
-                                        break; // Break inner loop
+                                        break;
                                     }
                                 }
-                                if (match_found) break; // Break outer loop if a match was found
+                                if (match_found)
+                                    break;
                             }
 
-                   //  (attribute >= meta_data_attributes[row]);
-                    filter_ids_map[(i - start) * total_elements + row] = match_found; });
+                            filter_ids_map[(i - start) * total_elements + row] =
+                                match_found;
+                        });
+                }
+
+                saveFilterMap(filter_ids_map, filter_file);
+                std::cout << "💾 Saved filter map for batch "
+                          << b + 1 << " to cache" << std::endl;
+            }
+
+            // Apply filter
+            alg_query_aware->predicateCondition(filter_ids_map.data());
+
+            // ------------------ Run queries for this batch ------------------
+            auto batch_start_time =
+                std::chrono::high_resolution_clock::now();
+
+            // Determine threads
+            size_t num_threads = std::thread::hardware_concurrency();
+            if (const char *cpus = std::getenv("SLURM_CPUS_PER_TASK"))
+            {
+                num_threads = std::stoi(cpus);
+            }
+
+            // std::cout << "Running batch " << b + 1 << "/" << num_batches
+            //           << " with ef=" << ef
+            //           << " using " << num_threads << " threads" << std::endl;
+
+            ParallelFor(
+                start,
+                end,
+                40,
+                [&](size_t row, size_t)
+                {
+                    alg_query_aware->search((query_data + row * dim),
+                                            row,
+                                            start,
+                                            queries_meta_data[row],
+                                            10);
+                });
+
+            auto batch_end_time =
+                std::chrono::high_resolution_clock::now();
+
+            auto duration_ms =
+                std::chrono::duration_cast<std::chrono::microseconds>(
+                    batch_end_time - batch_start_time)
+
+                    .count() /
+                1000.0;
+
+            totalTimePerEfs[ef] += duration_ms;
+
+            // std::cout << "Batch " << b + 1
+            //           << " processed in " << duration_ms
+            //           << " ms (ef=" << ef << ")" << std::endl;
         }
+    }
 
-        // saveFilterMap(filter_ids_map, filter_file);
-        std::cout << "💾 Saved filter map for batch " << b + 1 << " to cache" << std::endl;
+    // ------------------ Final statistics summary ------------------
 
-        alg_query_aware->predicateCondition(filter_ids_map.data());
-        alg_query_aware->setEf(10);
-        // ------------------ Run queries ONLY for this batch ------------------
-        auto batch_start_time = std::chrono::high_resolution_clock::now();
+    for (int ef : ef_values)
+    {
+        double total_queries = static_cast<double>(queries_meta_data.size());
+        double total_seconds = totalTimePerEfs[ef] / 1000.0;
+        double qps = total_queries / total_seconds;
 
-        for (size_t i = start; i < end; i++)
-        {
-            alg_query_aware->search(
-                query_data + (i * dim),
-                i,
-                queries_meta_data[i],
-                50);
-        }
-
-        auto batch_end_time = std::chrono::high_resolution_clock::now();
-
-        auto duration_ms =
-            std::chrono::duration_cast<std::chrono::microseconds>(
-                batch_end_time - batch_start_time)
-                .count() /
-            1000.0;
-
-        std::cout << "Batch " << b + 1
-                  << " processed in " << duration_ms << " ms" << std::endl;
+        std::cout << "Search Time for efSearch=" << ef
+                  << " => Total Queries: " << total_queries
+                  << ", Total Time: " << total_seconds << "s"
+                  << ", QPS: " << qps << std::endl;
     }
 }
