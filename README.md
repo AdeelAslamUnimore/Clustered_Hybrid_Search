@@ -11,6 +11,8 @@
 - [🗂️ Index Construction](#️-index-construction)
 - [✅ Ground Truth Computation](#-ground-truth-computation)
 - [🔍 Point Query Execution](#-point-query-execution)
+- [🔍 Range Query Execution](#-range-query-execution)
+- [🔍 Conjunction_Query Execution](#-conjunction-query-execution)
 - [⚡ High Selectivity Query](#-high-selectivity-query)
 - [📬 Contact](#-contact)
 
