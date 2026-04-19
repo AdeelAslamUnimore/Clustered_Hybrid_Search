@@ -329,7 +329,7 @@ CMakeFiles/example_conjunction_search.dir/examples/cpp/example_conjunction_searc
   /usr/include/c++/8/bits/refwrap.h \
   /usr/include/c++/8/bits/shared_ptr_atomic.h \
   /usr/include/c++/8/backward/auto_ptr.h \
-  /home/aa5f25/TKDEReview/predictive_conjuctive_queries/predictive_conjuctive_queries_clustering.h \
+  /home/aa5f25/TKDEReview/predictive_hybrid_queries/predictive_conjuctive_queries_clustering.h \
   /home/aa5f25/TKDEReview/predictive_range_queries/ranges.h \
   /home/aa5f25/TKDEReview/predictive_point_queries/memory_access.h \
   /home/aa5f25/TKDEReview/predictive_point_queries/count_min_sketch_min_hash.h \
@@ -429,8 +429,6 @@ CMakeFiles/example_conjunction_search.dir/examples/cpp/example_conjunction_searc
 /usr/include/asm-generic/types.h:
 
 /usr/include/c++/8/bits/deque.tcc:
-
-/usr/include/c++/8/bits/vector.tcc:
 
 /usr/include/c++/8/bits/stl_queue.h:
 
@@ -552,8 +550,6 @@ CMakeFiles/example_conjunction_search.dir/examples/cpp/example_conjunction_searc
 
 /usr/lib/gcc/x86_64-redhat-linux/8/include/pkuintrin.h:
 
-/home/aa5f25/TKDEReview/predictive_conjuctive_queries/predictive_conjuctive_queries_clustering.h:
-
 /usr/lib/gcc/x86_64-redhat-linux/8/include/f16cintrin.h:
 
 /usr/include/c++/8/bits/shared_ptr_base.h:
@@ -645,6 +641,10 @@ CMakeFiles/example_conjunction_search.dir/examples/cpp/example_conjunction_searc
 /usr/lib/gcc/x86_64-redhat-linux/8/include/lwpintrin.h:
 
 /usr/include/c++/8/bits/stl_iterator_base_types.h:
+
+/usr/include/c++/8/bits/vector.tcc:
+
+/home/aa5f25/TKDEReview/predictive_hybrid_queries/predictive_conjuctive_queries_clustering.h:
 
 /usr/lib/gcc/x86_64-redhat-linux/8/include/avx512vpopcntdqintrin.h:
 

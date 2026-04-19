@@ -141,4 +141,6 @@ set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/example_dynamic_filtering_search.dir/DependInfo.cmake"
   "CMakeFiles/example_cluster_level_search.dir/DependInfo.cmake"
   "CMakeFiles/example_dataset_creation.dir/DependInfo.cmake"
+  "CMakeFiles/example_disjunction_search.dir/DependInfo.cmake"
+  "CMakeFiles/example_filter_ground_truth_computer.dir/DependInfo.cmake"
   )

@@ -385,7 +385,7 @@ namespace clustered_hybrid_search
                 results.push_back(std::pair<dist_t, size_t>(rez.first, this->getExternalLabel(rez.second)));
                 top_candidates.pop();
             }
-            std::string filename = "/scratch/aa5f25/datasets/TripClick/Results/" + std::to_string(this->ef_);
+            std::string filename = "/scratch/aa5f25/datasets/yt8m/results/" + std::to_string(this->ef_);
             create_directory_if_not_exists(filename);
             filename += "/Q" +
                         std::to_string(query_number) + ".csv";
@@ -443,7 +443,7 @@ namespace clustered_hybrid_search
                 auto clusters = cluster_contains_attribute(current_node_id);
                 auto [cluster_id, max_pop] = popularity_computation(clusters, query_attribute);
                 // Decide which search to perform
-                if (max_pop > popularity_threshold) // High popularity → twoHopSearch
+                if (max_pop >popularity_threshold) // High popularity → twoHopSearch    if (max_pop > popularity_threshold)
                 {
 
                     if (cluster_visited.find(cluster_id) == cluster_visited.end())
@@ -835,7 +835,7 @@ namespace clustered_hybrid_search
                     continue;
 
                 const char *ep_data = this->getDataByInternalId(i);
-
+               // std::cout<<"I ma here"<<std::endl;
                 dist_t dist = this->fstdistfunc_(
                     query_vec,
                     ep_data,
@@ -858,7 +858,7 @@ namespace clustered_hybrid_search
             std::reverse(results.begin(), results.end());
 
             std::string filename =
-                "/scratch/aa5f25/datasets/TripClick/GroundTruth/Q" +
+                "/scratch/aa5f25/datasets/yt8m/Ground_truth/Q" +
                 std::to_string(query_id_global) + ".csv";
 
             std::ofstream out(filename);

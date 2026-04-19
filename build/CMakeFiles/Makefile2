@@ -71,6 +71,8 @@ all: CMakeFiles/example_conjunction_search.dir/all
 all: CMakeFiles/example_dynamic_filtering_search.dir/all
 all: CMakeFiles/example_cluster_level_search.dir/all
 all: CMakeFiles/example_dataset_creation.dir/all
+all: CMakeFiles/example_disjunction_search.dir/all
+all: CMakeFiles/example_filter_ground_truth_computer.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -86,6 +88,8 @@ clean: CMakeFiles/example_conjunction_search.dir/clean
 clean: CMakeFiles/example_dynamic_filtering_search.dir/clean
 clean: CMakeFiles/example_cluster_level_search.dir/clean
 clean: CMakeFiles/example_dataset_creation.dir/clean
+clean: CMakeFiles/example_disjunction_search.dir/clean
+clean: CMakeFiles/example_filter_ground_truth_computer.dir/clean
 .PHONY : clean
 
 #=============================================================================
@@ -95,7 +99,7 @@ clean: CMakeFiles/example_dataset_creation.dir/clean
 CMakeFiles/hnswlib.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/hnswlib.dir/build.make CMakeFiles/hnswlib.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/hnswlib.dir/build.make CMakeFiles/hnswlib.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=13,14 "Built target hnswlib"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=17,18 "Built target hnswlib"
 .PHONY : CMakeFiles/hnswlib.dir/all
 
 # Build rule for subdir invocation for target.
@@ -121,7 +125,7 @@ CMakeFiles/hnswlib.dir/clean:
 CMakeFiles/example_point_search.dir/all: CMakeFiles/hnswlib.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_point_search.dir/build.make CMakeFiles/example_point_search.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_point_search.dir/build.make CMakeFiles/example_point_search.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=9,10 "Built target example_point_search"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=13,14 "Built target example_point_search"
 .PHONY : CMakeFiles/example_point_search.dir/all
 
 # Build rule for subdir invocation for target.
@@ -147,7 +151,7 @@ CMakeFiles/example_point_search.dir/clean:
 CMakeFiles/example_range_search.dir/all: CMakeFiles/hnswlib.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_range_search.dir/build.make CMakeFiles/example_range_search.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_range_search.dir/build.make CMakeFiles/example_range_search.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=11,12 "Built target example_range_search"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=15,16 "Built target example_range_search"
 .PHONY : CMakeFiles/example_range_search.dir/all
 
 # Build rule for subdir invocation for target.
@@ -173,7 +177,7 @@ CMakeFiles/example_range_search.dir/clean:
 CMakeFiles/indexing_construction.dir/all: CMakeFiles/hnswlib.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/indexing_construction.dir/build.make CMakeFiles/indexing_construction.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/indexing_construction.dir/build.make CMakeFiles/indexing_construction.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=15,16 "Built target indexing_construction"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=19,20 "Built target indexing_construction"
 .PHONY : CMakeFiles/indexing_construction.dir/all
 
 # Build rule for subdir invocation for target.
@@ -225,7 +229,7 @@ CMakeFiles/example_conjunction_search.dir/clean:
 CMakeFiles/example_dynamic_filtering_search.dir/all: CMakeFiles/hnswlib.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_dynamic_filtering_search.dir/build.make CMakeFiles/example_dynamic_filtering_search.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_dynamic_filtering_search.dir/build.make CMakeFiles/example_dynamic_filtering_search.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=7,8 "Built target example_dynamic_filtering_search"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=9,10 "Built target example_dynamic_filtering_search"
 .PHONY : CMakeFiles/example_dynamic_filtering_search.dir/all
 
 # Build rule for subdir invocation for target.
@@ -295,6 +299,58 @@ example_dataset_creation: CMakeFiles/example_dataset_creation.dir/rule
 CMakeFiles/example_dataset_creation.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_dataset_creation.dir/build.make CMakeFiles/example_dataset_creation.dir/clean
 .PHONY : CMakeFiles/example_dataset_creation.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/example_disjunction_search.dir
+
+# All Build rule for target.
+CMakeFiles/example_disjunction_search.dir/all: CMakeFiles/hnswlib.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_disjunction_search.dir/build.make CMakeFiles/example_disjunction_search.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_disjunction_search.dir/build.make CMakeFiles/example_disjunction_search.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=7,8 "Built target example_disjunction_search"
+.PHONY : CMakeFiles/example_disjunction_search.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/example_disjunction_search.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/aa5f25/TKDEReview/build/CMakeFiles 4
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/example_disjunction_search.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/aa5f25/TKDEReview/build/CMakeFiles 0
+.PHONY : CMakeFiles/example_disjunction_search.dir/rule
+
+# Convenience name for target.
+example_disjunction_search: CMakeFiles/example_disjunction_search.dir/rule
+.PHONY : example_disjunction_search
+
+# clean rule for target.
+CMakeFiles/example_disjunction_search.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_disjunction_search.dir/build.make CMakeFiles/example_disjunction_search.dir/clean
+.PHONY : CMakeFiles/example_disjunction_search.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/example_filter_ground_truth_computer.dir
+
+# All Build rule for target.
+CMakeFiles/example_filter_ground_truth_computer.dir/all: CMakeFiles/hnswlib.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_filter_ground_truth_computer.dir/build.make CMakeFiles/example_filter_ground_truth_computer.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_filter_ground_truth_computer.dir/build.make CMakeFiles/example_filter_ground_truth_computer.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/aa5f25/TKDEReview/build/CMakeFiles --progress-num=11,12 "Built target example_filter_ground_truth_computer"
+.PHONY : CMakeFiles/example_filter_ground_truth_computer.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/example_filter_ground_truth_computer.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/aa5f25/TKDEReview/build/CMakeFiles 4
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/example_filter_ground_truth_computer.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/aa5f25/TKDEReview/build/CMakeFiles 0
+.PHONY : CMakeFiles/example_filter_ground_truth_computer.dir/rule
+
+# Convenience name for target.
+example_filter_ground_truth_computer: CMakeFiles/example_filter_ground_truth_computer.dir/rule
+.PHONY : example_filter_ground_truth_computer
+
+# clean rule for target.
+CMakeFiles/example_filter_ground_truth_computer.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_filter_ground_truth_computer.dir/build.make CMakeFiles/example_filter_ground_truth_computer.dir/clean
+.PHONY : CMakeFiles/example_filter_ground_truth_computer.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

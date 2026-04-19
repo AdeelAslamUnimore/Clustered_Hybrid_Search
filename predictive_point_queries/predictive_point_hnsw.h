@@ -36,12 +36,14 @@ namespace clustered_hybrid_search
         char *filter_id_map;
         float popularity_threshold;
         size_t max_elements_;
+        int global_distance_computations_counter;
 
     public:
         PredictivePointHNSW(hnswlib::SpaceInterface<dist_t> *space, size_t max_elements, const std::string &location_of_index, std::unordered_map<tableint, std::vector<std::string>> &meta_data_predicates_)
             : hnswlib::HierarchicalNSW<dist_t>(space, max_elements)
         {
             this->loadIndex(location_of_index, space, max_elements);
+
             meta_data_predicates = meta_data_predicates_;
             mem_for_ids_for_clusters = (char *)malloc(max_elements * (3 * sizeof(char)));
             memset(mem_for_ids_for_clusters, 0, max_elements * (3 * sizeof(char)));
@@ -50,6 +52,7 @@ namespace clustered_hybrid_search
                 throw std::runtime_error("Not enough memory");
             max_elements_ = max_elements;
             popularity_threshold = 0.0f;
+            global_distance_computations_counter = 0;
         }
         // Method to perform clustering and maintain sketches for predictive point queries. It is actually conisder the two-hop neighbors for clustering
         // Here we employ Count Min Sketch with Min Hash for each cluster to maintain the sketches
@@ -64,7 +67,118 @@ namespace clustered_hybrid_search
             std::unordered_set<tableint> visitedIds;
             std::unordered_set<tableint> visitedIdsLocally; // Keeping track of local visited Ids for a cluster
 
-            for (tableint id = 0; id < meta_data_predicates.size(); id++)
+            for (tableint id = 0; id < this->max_elements_; id++)
+            {
+                if (visitedIds.find(id) != visitedIds.end())
+                    continue;
+                visitedIds.insert(id);
+
+                bit_manipulation_short(id, clusterNumber);
+                counterForFilter++;
+                
+                int *data = (int *)this->get_linklist0(id);
+                if (!data) //
+                    continue;
+
+                size_t size = this->getListCount((linklistsizeint *)data);
+                tableint *datal = (tableint *)(data + 1);
+
+                // One hop neighbors
+                for (size_t j = 0; j < size; j++)
+                {
+                    tableint candidateId = *(datal + j);
+                    visitedIds.insert(candidateId);
+                    if (visitedIdsLocally.find(candidateId) != visitedIdsLocally.end())
+                        continue;
+                    visitedIdsLocally.insert(candidateId);
+
+                    // Update CMS
+                    for (const auto &predicate : meta_data_predicates[candidateId])
+                    {
+                        current_cms.update(predicate, candidateId, 1);
+                    }
+
+                    bit_manipulation_short(candidateId, clusterNumber);
+                    counterForFilter++;
+                }
+
+               
+                // Two hop neighbors (separate loop like in your other code)
+                for (size_t j = 0; j < size; j++)
+                {
+                    tableint candidateId = *(datal + j);
+
+                    int *twoHopData = (int *)this->get_linklist0(candidateId);
+                    if (!twoHopData) //
+                        continue;
+
+                    size_t twoHopSize = this->getListCount((linklistsizeint *)twoHopData);
+                    tableint *twoHopDatal = (tableint *)(twoHopData + 1);
+
+                    for (size_t k = 0; k < twoHopSize; k++)
+                    {
+                        tableint candidateIdTwoHop = *(twoHopDatal + k);
+
+                        visitedIds.insert(candidateIdTwoHop);
+                        if (visitedIdsLocally.find(candidateIdTwoHop) != visitedIdsLocally.end())
+                            continue;
+                        visitedIdsLocally.insert(candidateIdTwoHop);
+
+                        // Update CMS
+                        for (const auto &predicate : meta_data_predicates[candidateIdTwoHop])
+                        {
+                            current_cms.update(predicate, candidateIdTwoHop, 1);
+                        }
+
+                        bit_manipulation_short(candidateIdTwoHop, clusterNumber);
+                        counterForFilter++;
+                    }
+                }
+                
+
+
+                // Update data structure when cluster is full
+                if (counterForFilter >= size_of_cluster)
+                {
+
+                    // Use move semantics
+                    current_cms.total = counterForFilter;
+                    mapForCMS[clusterNumber] = std::move(current_cms);
+
+                    // Reset for next cluster
+                    clusterNumber++;
+                    counterForFilter = 0;
+                    current_cms = CountMinSketchMinHash(); // Create new CMS
+                    visitedIdsLocally.clear();             // Clear local visited IDs
+                }
+                   if (clusterNumber >= 31)
+                {
+                    std::cout << "Cluster number: " << clusterNumber << ", Counter: " << counterForFilter << std::endl;
+                }
+            }
+              
+
+            // Handle remaining nodes
+            if (counterForFilter > 0)
+            {
+                  
+                current_cms.total = counterForFilter;
+                mapForCMS[clusterNumber] = std::move(current_cms);
+            }
+        }
+
+        // Clustering just using two hop neighbors and maintaining the sketches with disk optimization. Here we are not considering the direct neighbors for clustering but only the two-hop neighbors for clustering
+        void clustering_and_maintaining_sketches_two_hop_search()
+        {
+            unsigned int clusterNumber = 0;
+            int counterForFilter = 0;
+            // Use single CMS instance instead of vector
+            CountMinSketchMinHash current_cms;
+            // For keeping track of visited nodes GLOBALLY
+            std::unordered_set<tableint> visitedIds;
+            std::unordered_set<tableint> visitedIdsLocally; // Keeping track of local visited Ids for a cluster
+
+            for (tableint id = 0; id < this->max_elements_; id++)
             {
                 if (visitedIds.find(id) != visitedIds.end())
                     continue;
@@ -131,26 +245,15 @@ namespace clustered_hybrid_search
                     }
                 }
 
-                // Update data structure when cluster is full
-                if (counterForFilter >= size_of_cluster)
-                {
-                    // Use move semantics
-                    current_cms.total = counterForFilter;
-                    mapForCMS[clusterNumber] = std::move(current_cms);
-
-                    // Reset for next cluster
-                    clusterNumber++;
-                    counterForFilter = 0;
-                    current_cms = CountMinSketchMinHash(); // Create new CMS
-                    visitedIdsLocally.clear();             // Clear local visited IDs
-                }
-            }
-
-            // Handle remaining nodes
-            if (counterForFilter > 0)
-            {
+                // Use move semantics
                 current_cms.total = counterForFilter;
                 mapForCMS[clusterNumber] = std::move(current_cms);
+
+                // Reset for next cluster
+                clusterNumber++;
+                counterForFilter = 0;
+                current_cms = CountMinSketchMinHash(); // Create new CMS
+                visitedIdsLocally.clear();             // Clear local visited IDs
             }
         }
 
@@ -178,7 +281,7 @@ namespace clustered_hybrid_search
             // To keep track of visited nodes
             std::unordered_set<tableint> visitedIds;
 
-            for (tableint id = 0; id < meta_data_predicates.size(); id++)
+            for (tableint id = 0; id < this->max_elements_; id++)
             {
                 if (visitedIds.find(id) != visitedIds.end())
                     continue; // Skip if already visited
@@ -400,31 +503,38 @@ namespace clustered_hybrid_search
             filter_id_map = filters_array;
         }
 
-        void popularityThresoldComputation()
+        void popularityThresoldComputation(const bool &selectivity_based_threshold,  const std::unordered_map<std::string, std::string> &constants)
         {
+            if (selectivity_based_threshold)
+            {
+                popularity_threshold = std::stof(constants.at("SELECTIVITY_THRESHOLD")); // Example fixed threshold for selectivity-based approach
+            }
+            else
+            {
 
-            // 1. Get CMS ratio bounds
-            auto bounds = lowerAndUpperBoundForCms();
-            float lowerBound = bounds.first;
-            float upperBound = bounds.second;
+                // 1. Get CMS ratio bounds
+                auto bounds = lowerAndUpperBoundForCms();
+                float lowerBound = bounds.first;
+                float upperBound = bounds.second;
 
-            // 2. Sanity check
-            if (upperBound <= lowerBound)
-                return;
+                // 2. Sanity check
+                if (upperBound <= lowerBound)
+                    return;
 
-            // 3. Clamp efs to maximum
-            const float MAX_EFS = 1300.0f;
-            float efsClamped = std::min(static_cast<float>(this->ef_), MAX_EFS);
+                // 3. Clamp efs to maximum
+                const float MAX_EFS = std::stof(constants.at("MAX_EFS")); // Define a maximum threshold for efSearch to prevent excessive computation
+                float efsClamped = std::min(static_cast<float>(this->ef_), MAX_EFS);
 
-            // 4. Normalize efs using log scaling (0 → 1)
-            float alpha =
-                std::log1p(efsClamped) /
-                std::log1p(MAX_EFS);
+                // 4. Normalize efs using log scaling (0 → 1)
+                float alpha =
+                    std::log1p(efsClamped) /
+                    std::log1p(MAX_EFS);
 
-            // 5. Compute popularity threshold
-            popularity_threshold =
-                lowerBound + alpha * (upperBound - lowerBound);
-            std::cout << "Popularity threshold computed: " << popularity_threshold << std::endl;
+                // 5. Compute popularity threshold
+                popularity_threshold =
+                    lowerBound + alpha * (upperBound - lowerBound);
+                std::cout << "Popularity threshold computed: " << popularity_threshold << std::endl;
+            }
         }
 
         std::pair<float, float> lowerAndUpperBoundForCms()
@@ -479,9 +589,72 @@ namespace clustered_hybrid_search
             return {globalMin, globalMax};
         }
 
-        void search(const void *query_data, size_t query_number, size_t start, const std::vector<std::string> &query_predicates, size_t k)
+        void groundTruthBatch(const float *query_vec,
+                              size_t k,
+                              size_t query_id_global,
+                              size_t total_elements,
+                              size_t batch_start, std::string &filename)
         {
-          
+            if (query_id_global < batch_start)
+            {
+                std::cerr << "❌ Invalid query index\n";
+                return;
+            }
+
+            const size_t local_index = query_id_global - batch_start;
+            const size_t filter_offset = local_index * total_elements;
+
+            std::priority_queue<std::pair<dist_t, size_t>> top_candidates;
+
+            for (size_t i = 0; i < total_elements; ++i)
+            {
+                if (!filter_id_map[filter_offset + i])
+                    continue;
+
+                const char *ep_data = this->getDataByInternalId(i);
+
+                dist_t dist = this->fstdistfunc_(
+                    query_vec,
+                    ep_data,
+                    this->dist_func_param_);
+
+                top_candidates.emplace(dist, i);
+
+                if (top_candidates.size() > k)
+                    top_candidates.pop();
+            }
+
+            std::vector<std::pair<dist_t, size_t>> results;
+            results.reserve(k);
+
+            while (!top_candidates.empty())
+            {
+                results.push_back(top_candidates.top());
+                top_candidates.pop();
+            }
+            std::reverse(results.begin(), results.end());
+            std::string output_file =
+                filename + "/Q" + std::to_string(query_id_global) + ".csv";
+
+            std::ofstream out(output_file);
+            out << "ID,Distance\n";
+
+            if (!results.empty())
+            {
+                for (auto &p : results)
+                    out << p.second << "," << p.first << "\n";
+            }
+            else
+            {
+                for (size_t i = 0; i < k; ++i)
+                    out << -1 << "," << std::numeric_limits<dist_t>::max() << "\n";
+            }
+        }
+
+        void search(const void *query_data, size_t query_number, size_t start, const std::vector<std::string> &query_predicates, size_t topk, std::string &folder_path)
+        {
+            
+            int distance_computations_counter = 0;
             // Map for removing overhead of duplicate distance computation
             std::unordered_map<tableint, dist_t> distance_map;
 
@@ -506,7 +679,7 @@ namespace clustered_hybrid_search
 
             const size_t result_limit = k * 2;
             // Drain search results and apply filtering
-          
+
             while (!search_results.empty())
             {
                 auto [dist, id] = search_results.top();
@@ -551,12 +724,14 @@ namespace clustered_hybrid_search
                 {
                     if (max_pop > popularity_threshold)
                     {
-                       //std::cout << "Two-hop expansion for ID " << id << " in cluster " << cluster_id << " with popularity " << max_pop <<" popularity threshold "<<popularity_threshold<< std::endl;
-                       two_hop_search_neighbors(query_data, id, filter_offset,
+                        // std::cout << "Two-hop expansion for ID " << id << " in cluster " << cluster_id << " with popularity " << max_pop <<" popularity threshold "<<popularity_threshold<< std::endl;
+                        two_hop_search_neighbors(query_data, id, filter_offset,
                                                  visitedIds, distance_map, results);
                     }
+
                     else
                     {
+
                         one_hop_search_neighbors(query_data, id, filter_offset,
                                                  visitedIds, distance_map, results);
                     }
@@ -566,8 +741,8 @@ namespace clustered_hybrid_search
             // -------------------
             // Write results to file
             // -------------------
-
-            std::string filename = "/scratch/aa5f25/datasets/paper/results/" + std::to_string(this->ef_);
+            global_distance_computations_counter += distance_computations_counter;
+            std::string filename = folder_path+ std::to_string(this->ef_);
             create_directory_if_not_exists(filename);
             filename += "/Q" + std::to_string(query_number) + ".csv";
 
@@ -605,6 +780,11 @@ namespace clustered_hybrid_search
             }
 
             out.close();
+        }
+
+        void result_print()
+        {
+            std::cout << "Total distance computations: " << global_distance_computations_counter << std::endl;
         }
 
         std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> predictive_point_query_test(const void *query_data, size_t filter_offset, const std::vector<std::string> &query_predicates, size_t top_k)
@@ -888,6 +1068,7 @@ namespace clustered_hybrid_search
                 else
                 {
                     distance = this->fstdistfunc_(data_point, this->getDataByInternalId(candidateId), this->dist_func_param_);
+
                     result_queue.push({distance, candidateId});
                 }
                 visitedIds.insert(candidateId);
@@ -954,6 +1135,7 @@ namespace clustered_hybrid_search
                                              data_point,
                                              this->getDataByInternalId(secondHopId),
                                              this->dist_func_param_);
+
                     visitedIds.insert(secondHopId);
                     result_queue.push({dist2, secondHopId});
                 }
@@ -973,6 +1155,98 @@ namespace clustered_hybrid_search
                     std::cerr << "Error creating directory: " << path << std::endl;
                 }
             }
+        }
+
+        void search_PF_two_hop(const void *query_data, size_t query_number, size_t start, const std::vector<std::string> &query_predicates, size_t k)
+        {
+            int distance_computations_counter = 0;
+            // Map for removing overhead of duplicate distance computation
+            std::unordered_map<tableint, dist_t> distance_map;
+
+            const size_t filter_offset = (query_number - start) * max_elements_;
+
+            // We maintain a max-heap of size k (worst element on top)
+            std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement>
+                results;
+
+            // Get initial top-k candidates
+            auto search_results = this->searchKnnForPredictiveStructures(query_data, k, &distance_map);
+            // Pre-allocate with estimated size
+            const size_t estimated_size = search_results.size();
+            std::unordered_set<tableint> visitedIds;
+            //  visitedIds.reserve(estimated_size);
+
+            std::unordered_set<tableint> visitedClusters;
+            // visitedClusters.reserve(estimated_size / 10); // Estimate fewer clusters than nodes
+
+            std::vector<tableint> indices;
+            indices.reserve(estimated_size);
+
+            const size_t result_limit = k * 2;
+            // Drain search results and apply filtering
+
+            while (!search_results.empty())
+            {
+                auto [dist, id] = search_results.top();
+                search_results.pop();
+
+                if (filter_id_map[filter_offset + id])
+                {
+                    results.emplace(dist, id);
+                }
+                indices.push_back(id);
+            }
+
+            for (tableint id : indices)
+            {
+
+                // std::cout << "Two-hop expansion for ID " << id << " in cluster " << cluster_id << " with popularity " << max_pop <<" popularity threshold "<<popularity_threshold<< std::endl;
+                two_hop_search_neighbors(query_data, id, filter_offset,
+                                         visitedIds, distance_map, results);
+            }
+
+            // -------------------
+            // Write results to file
+            // -------------------
+
+            std::string filename = "/scratch/aa5f25/datasets/yt8m//results/" + std::to_string(this->ef_);
+            create_directory_if_not_exists(filename);
+            filename += "/Q" + std::to_string(query_number) + ".csv";
+
+            std::ofstream out(filename);
+            if (!out.is_open())
+            {
+                std::cerr << "❌ Failed to open file: " << filename << std::endl;
+                return;
+            }
+
+            out << "ID,Distance\n";
+
+            if (!results.empty())
+            {
+                // Extract into vector to reverse order (nearest first)
+                std::vector<std::pair<dist_t, size_t>> ordered_results;
+
+                while (!results.empty())
+                {
+                    ordered_results.push_back(results.top());
+                    results.pop();
+                }
+
+                // Since this is a max-heap, reverse to get smallest distance first
+                std::reverse(ordered_results.begin(), ordered_results.end());
+
+                for (const auto &p : ordered_results)
+                    out << p.second << "," << p.first << "\n";
+            }
+            else
+            {
+                // Fallback: write k dummy rows
+                for (size_t i = 0; i < k; i++)
+                    out << -1 << "," << std::numeric_limits<float>::max() << "\n";
+            }
+
+            out.close();
         }
 
         ~PredictivePointHNSW()

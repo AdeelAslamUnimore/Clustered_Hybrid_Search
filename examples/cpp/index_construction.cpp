@@ -14,8 +14,8 @@
 #include <random>
 
 using namespace std;
+std::unordered_map<std::string, std::string> reading_constants(std::string &path);
 pair<vector<vector<float>>, vector<string>> reading_files(const string &file_path, int &dim, bool queries);
-
 vector<float> splitToFloat(const string &str, char delimiter)
 {
     vector<float> tokens;
@@ -106,22 +106,25 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
 
 int main()
 {
-
-    int dim = 768;
+    std::string path_constants = "../examples/constants/index_construction.txt";
+    std::unordered_map<std::string, std::string> constants = reading_constants(path_constants);
+    
+    int dim = std::stoi(constants["DIM"]);;
     // Dimension of the elements
 
-    int M = 128;
+    int M = std::stoi(constants["M"]);
+   
     // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
-    int ef_construction = 200;
+    int ef_construction = std::stoi(constants["EFC"]);
+    
     // Controls index search speed/build speed tradeoff
-    int num_threads = 40; // Number of threads for operations with index
-
+    int num_threads = std::stoi(constants["NUM_THREADS"]); // Number of threads for operations with index
     // For True if you have already index it is only for construction of index
     hnswlib::L2Space space(dim);
 
-    auto [embeddings, string_ids] = reading_files("/scratch/aa5f25/datasets/TripClick/documents_full.csv", dim, false);
-    int max_elements = embeddings.size();
+    auto [embeddings, string_ids] = reading_files(constants["DATASET_FILE"], dim, false);
+    int max_elements = std::stoi(constants["TOTAL_ELEMENTS"]); // embeddings.size();
 
     // Map int -> string IDs
     unordered_map<int, string> id_map;
@@ -136,15 +139,15 @@ int main()
 
     hnswlib::HierarchicalNSW<float> *alg_query_aware =
         new hnswlib::HierarchicalNSW<float>(&space, max_elements, M, ef_construction);
-    // Build HNSW index
+    // Build HNSW index parallelly with num_threads 
     ParallelFor(0, max_elements, num_threads, [&](size_t row, size_t threadId)
                 { alg_query_aware->addPoint((void *)(data + dim * row), (int)row); });
-    alg_query_aware->saveIndex("/scratch/aa5f25/datasets/TripClick/index.bin");
+    alg_query_aware->saveIndex(constants["INDEX_PATH"]);
     delete[] data;
     delete alg_query_aware;
 }
 
-// Read embeddings from CSV-like file for Point predicate
+// Read embeddings as floating points
 pair<vector<vector<float>>, vector<string>> reading_files(const string &file_path, int &dim, bool queries = false)
 {
     cout << "Reading file: " << file_path << endl;
@@ -158,21 +161,18 @@ pair<vector<vector<float>>, vector<string>> reading_files(const string &file_pat
 
         stringstream ss(line);
 
-        string embedding, attribute, skip;
-        if (!queries)
-        {
-            getline(ss, attribute, ';');
-            getline(ss, skip, ';');
-            getline(ss, embedding, ';');
+        std::string embedding, skip, skip1, skip2, skip3, skip4, skip5, skip6, attribute;
 
-            //  getline(ss, embedding, ';');
-        }
-        else
-        {
-            getline(ss, attribute, ';');
-            getline(ss, skip, ';');
-            getline(ss, embedding, ';');
-        }
+        // CSV format: embedding;attribute
+
+        std::getline(ss, skip, ';');
+        std::getline(ss, embedding, ';');
+        std::getline(ss, skip1, ';');
+        std::getline(ss, attribute, ';');
+        std::getline(ss, skip2, ';');
+        std::getline(ss, skip3, ';');
+        std::getline(ss, skip4, ';');
+
         if (!isNullOrEmpty(embedding))
         {
             vector<float> embeddingVector = splitToFloat(embedding, ',');
@@ -184,4 +184,28 @@ pair<vector<vector<float>>, vector<string>> reading_files(const string &file_pat
         }
     }
     return {total_embeddings, attributes};
+}
+
+// Define a variant to hold different types
+std::unordered_map<std::string, std::string> reading_constants(std::string &path)
+{
+    std::unordered_map<std::string, std::string> constants; // Store values as strings
+    std::ifstream file(path);
+
+    if (!file)
+    {
+        std::cerr << "Error opening file!" << std::endl;
+        return constants;
+    }
+
+    std::string key, value;
+
+    while (file >> key >> value)
+    {
+        constants[key] = value;
+    }
+
+    file.close();
+
+    return constants;
 }

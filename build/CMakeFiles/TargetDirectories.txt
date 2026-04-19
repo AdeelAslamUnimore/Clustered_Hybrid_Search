@@ -6,6 +6,8 @@
 /home/aa5f25/TKDEReview/build/CMakeFiles/example_dynamic_filtering_search.dir
 /home/aa5f25/TKDEReview/build/CMakeFiles/example_cluster_level_search.dir
 /home/aa5f25/TKDEReview/build/CMakeFiles/example_dataset_creation.dir
+/home/aa5f25/TKDEReview/build/CMakeFiles/example_disjunction_search.dir
+/home/aa5f25/TKDEReview/build/CMakeFiles/example_filter_ground_truth_computer.dir
 /home/aa5f25/TKDEReview/build/CMakeFiles/edit_cache.dir
 /home/aa5f25/TKDEReview/build/CMakeFiles/rebuild_cache.dir
 /home/aa5f25/TKDEReview/build/CMakeFiles/list_install_components.dir

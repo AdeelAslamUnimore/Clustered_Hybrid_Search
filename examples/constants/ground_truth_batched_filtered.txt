@@ -1,0 +1,15 @@
+DIM 1024
+M 32
+EFC 16
+TOP_K 10
+NUM_THREADS 40
+TOTAL_ELEMENTS 10000
+BATCH_OF_QUERIES 200
+INDEX_PATH /scratch/aa5f25/datasets/yt8m/index.bin
+META_DATA_PATH /scratch/aa5f25/datasets/yt8m/genre_meta_data.csv
+DATASET_FILE /scratch/aa5f25/datasets/yt8m/yt_data.csv
+QUERIES_PATH /scratch/aa5f25/datasets/yt8m/Queries_Genre.csv
+FILTER_PATH /scratch/aa5f25/datasets/yt8m/filters/
+GROUND_TRUTH /scratch/aa5f25/datasets/yt8m/Ground_truth
+
+

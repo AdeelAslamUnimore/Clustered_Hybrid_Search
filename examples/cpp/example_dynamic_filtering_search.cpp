@@ -189,18 +189,18 @@ int main(int argc, char const *argv[])
 {
 
     /* code */
-    int dim = 768;
-    std::unordered_map<unsigned int, std::vector<std::string>> meta_data = reading_meta_data("/scratch/aa5f25/datasets/TripClick/TripClick_docs_with_correlation.csv");
+    int dim = 1024;
+ 
+    std::unordered_map<unsigned int, std::vector<std::string>> meta_data = reading_meta_data("/scratch/aa5f25/datasets/yt8m/genre_meta_data.csv");
     int max_elements = meta_data.size();
     hnswlib::L2Space space(dim);
 
-   
-    clustered_hybrid_search::PredictiveDynamicFilteringHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictiveDynamicFilteringHNSW<float>(&space, max_elements, "/scratch/aa5f25/datasets/TripClick/index.bin", meta_data); // Load existing index
-                                                                                                                                                                                                                           // alg_query_aware->clustering_and_maintaining_sketches(80);
-                                                                                                                                                                                                                           // clustered_hybrid_search::PredictivePointHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictivePointHNSW<float>(&space, max_elements, "/home/aa5f25/Index/index.bin", meta_data); // Load existing index
+    clustered_hybrid_search::PredictiveDynamicFilteringHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictiveDynamicFilteringHNSW<float>(&space, max_elements, "/scratch/aa5f25/datasets/yt8m/index.bin", meta_data); // Load existing index
+                                                                                                                                                                                                                                       // alg_query_aware->clustering_and_maintaining_sketches(80);
+                                                                                                                                                                                                                                       // clustered_hybrid_search::PredictivePointHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictivePointHNSW<float>(&space, max_elements, "/home/aa5f25/Index/index.bin", meta_data); // Load existing index
     alg_query_aware->clustering_and_maintaining_sketches(10000);
+   pair<vector<vector<float>>, vector<vector<string>>> query_reading_results = reading_queries("/scratch/aa5f25/datasets/yt8m/Queries_Genre.csv", dim);
 
-    pair<vector<vector<float>>, vector<vector<string>>> query_reading_results = reading_queries("/scratch/aa5f25/datasets/TripClick/TripClick_queries_with_correlation.csv", dim);
     std::cout << "Read all queries" << std::endl;
     float *query_data = new float[dim * query_reading_results.first.size()];
     int index_of_query_vector = 0;
@@ -257,12 +257,20 @@ reading_meta_data(const std::string &file_path)
     while (std::getline(file, line))
     {
         std::stringstream ss(line);
-        std::string embedding, skip, attribute;
-        
+        std::string embedding, skip, skip1, skip2, skip3, skip4, skip5, skip6, attribute;
+
         // CSV format: embedding;attribute
-        std::getline(ss, embedding, ';');
-       // std::getline(ss, skip, ';');
+ 
+        // std::getline(ss, skip, ';');
+        // std::getline(ss, embedding, ';');
+        // std::getline(ss, skip1, ';');
         std::getline(ss, attribute, ';');
+        // std::getline(ss, skip2, ';');
+        // std::getline(ss, skip3, ';');
+        // std::getline(ss, skip4, ';');
+    
+        // std::getline(ss, embedding, ';');
+      //  std::cout<<"Attribute"<<attribute<<std::endl;
 
         std::vector<std::string> attr_vec;
         std::stringstream attr_ss(attribute);
@@ -273,6 +281,7 @@ reading_meta_data(const std::string &file_path)
             // Trim whitespace
             token.erase(0, token.find_first_not_of(" \t\n\r\f\v"));
             token.erase(token.find_last_not_of(" \t\n\r\f\v") + 1);
+            transform(token.begin(), token.end(), token.begin(), ::tolower);
 
             if (!token.empty())
                 attr_vec.push_back(token);
@@ -300,13 +309,23 @@ pair<vector<vector<float>>, vector<vector<string>>> reading_queries(const string
     while (getline(file, line))
     {
         count++;
-        std::cout << "Reading line " << count << "\r" << std::flush; // Progress indicator
+      //  std::cout << "Reading line " << count << "\r" << std::flush; // Progress indicator
         stringstream ss(line);
-        string embedding, skip, attribute;
+        std::string embedding, skip, skip1, skip2, skip3, skip4, skip5, skip6, attribute;
 
-        getline(ss, embedding, ';');
-       // getline(ss, skip, ';');
-        getline(ss, attribute, ';');
+        // CSV format: embedding;attribute
+
+        std::getline(ss, skip, ';');
+        std::getline(ss, embedding, ';');
+        std::getline(ss, skip1, ';');
+        std::getline(ss, attribute, ';');
+        std::getline(ss, skip2, ';');
+        std::getline(ss, skip3, ';');
+        std::getline(ss, skip4, ';');
+
+        
+
+        //
 
         if (!isNullOrEmpty(embedding))
         {
@@ -331,7 +350,7 @@ void batch_process_queries(
     int dim,
     size_t num_threads)
 {
-    std::vector<int> ef_values = {10, 20, 60, 200, 400, 800, 1000, 1200, 1300};
+    std::vector<int> ef_values = {20, 40, 80, 100, 200, 300, 500, 800, 1000, 1200, 1500};
 
     // Track total time per ef for final statistics
     std::unordered_map<int, double> totalTimePerEfs;
@@ -352,7 +371,7 @@ void batch_process_queries(
             size_t end = std::min(start + batch_size, queries_meta_data.size());
 
             std::string filter_file =
-                "/iridisfs/scratch/aa5f25/datasets/TripClick/Filteres/filter_batch_" +
+                "/scratch/aa5f25/datasets/yt8m/filters/filter_batch_" +
                 std::to_string(start) + ".bin";
             std::vector<char> filter_ids_map;
 
@@ -374,7 +393,7 @@ void batch_process_queries(
                     ParallelFor(
                         0,
                         alg_query_aware->max_elements_,
-                        60,
+                     60,
                         [&](size_t row, size_t threadId)
                         {
                             const auto &row_attributes = meta_data[row];
@@ -384,8 +403,11 @@ void batch_process_queries(
                             {
                                 for (const auto &row_attr : row_attributes)
                                 {
+                                    
                                     if (q_attr == row_attr)
                                     {
+                                       //  std::cout<<" "<<q_attr<<"   "<<row_attr<<std::endl;
+                                       
                                         match_found = true;
                                         break;
                                     }
@@ -450,7 +472,7 @@ void batch_process_queries(
 
             totalTimePerEfs[ef] += duration_ms;
         }
-    // break;
+        //break;
     }
 
     // ------------------ Log final statistics ------------------

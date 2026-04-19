@@ -265,6 +265,32 @@ example_dataset_creation/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_dataset_creation.dir/build.make CMakeFiles/example_dataset_creation.dir/build
 .PHONY : example_dataset_creation/fast
 
+#=============================================================================
+# Target rules for targets named example_disjunction_search
+
+# Build rule for target.
+example_disjunction_search: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 example_disjunction_search
+.PHONY : example_disjunction_search
+
+# fast build rule for target.
+example_disjunction_search/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_disjunction_search.dir/build.make CMakeFiles/example_disjunction_search.dir/build
+.PHONY : example_disjunction_search/fast
+
+#=============================================================================
+# Target rules for targets named example_filter_ground_truth_computer
+
+# Build rule for target.
+example_filter_ground_truth_computer: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 example_filter_ground_truth_computer
+.PHONY : example_filter_ground_truth_computer
+
+# fast build rule for target.
+example_filter_ground_truth_computer/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_filter_ground_truth_computer.dir/build.make CMakeFiles/example_filter_ground_truth_computer.dir/build
+.PHONY : example_filter_ground_truth_computer/fast
+
 examples/cpp/example_cluster_level_search.o: examples/cpp/example_cluster_level_search.cpp.o
 .PHONY : examples/cpp/example_cluster_level_search.o
 
@@ -337,6 +363,30 @@ examples/cpp/example_dataset_creation.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_dataset_creation.dir/build.make CMakeFiles/example_dataset_creation.dir/examples/cpp/example_dataset_creation.cpp.s
 .PHONY : examples/cpp/example_dataset_creation.cpp.s
 
+examples/cpp/example_disjunction_search.o: examples/cpp/example_disjunction_search.cpp.o
+.PHONY : examples/cpp/example_disjunction_search.o
+
+# target to build an object file
+examples/cpp/example_disjunction_search.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_disjunction_search.dir/build.make CMakeFiles/example_disjunction_search.dir/examples/cpp/example_disjunction_search.cpp.o
+.PHONY : examples/cpp/example_disjunction_search.cpp.o
+
+examples/cpp/example_disjunction_search.i: examples/cpp/example_disjunction_search.cpp.i
+.PHONY : examples/cpp/example_disjunction_search.i
+
+# target to preprocess a source file
+examples/cpp/example_disjunction_search.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_disjunction_search.dir/build.make CMakeFiles/example_disjunction_search.dir/examples/cpp/example_disjunction_search.cpp.i
+.PHONY : examples/cpp/example_disjunction_search.cpp.i
+
+examples/cpp/example_disjunction_search.s: examples/cpp/example_disjunction_search.cpp.s
+.PHONY : examples/cpp/example_disjunction_search.s
+
+# target to generate assembly for a file
+examples/cpp/example_disjunction_search.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_disjunction_search.dir/build.make CMakeFiles/example_disjunction_search.dir/examples/cpp/example_disjunction_search.cpp.s
+.PHONY : examples/cpp/example_disjunction_search.cpp.s
+
 examples/cpp/example_dynamic_filtering_search.o: examples/cpp/example_dynamic_filtering_search.cpp.o
 .PHONY : examples/cpp/example_dynamic_filtering_search.o
 
@@ -360,6 +410,30 @@ examples/cpp/example_dynamic_filtering_search.s: examples/cpp/example_dynamic_fi
 examples/cpp/example_dynamic_filtering_search.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_dynamic_filtering_search.dir/build.make CMakeFiles/example_dynamic_filtering_search.dir/examples/cpp/example_dynamic_filtering_search.cpp.s
 .PHONY : examples/cpp/example_dynamic_filtering_search.cpp.s
+
+examples/cpp/example_filter_ground_truth_computer.o: examples/cpp/example_filter_ground_truth_computer.cpp.o
+.PHONY : examples/cpp/example_filter_ground_truth_computer.o
+
+# target to build an object file
+examples/cpp/example_filter_ground_truth_computer.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_filter_ground_truth_computer.dir/build.make CMakeFiles/example_filter_ground_truth_computer.dir/examples/cpp/example_filter_ground_truth_computer.cpp.o
+.PHONY : examples/cpp/example_filter_ground_truth_computer.cpp.o
+
+examples/cpp/example_filter_ground_truth_computer.i: examples/cpp/example_filter_ground_truth_computer.cpp.i
+.PHONY : examples/cpp/example_filter_ground_truth_computer.i
+
+# target to preprocess a source file
+examples/cpp/example_filter_ground_truth_computer.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_filter_ground_truth_computer.dir/build.make CMakeFiles/example_filter_ground_truth_computer.dir/examples/cpp/example_filter_ground_truth_computer.cpp.i
+.PHONY : examples/cpp/example_filter_ground_truth_computer.cpp.i
+
+examples/cpp/example_filter_ground_truth_computer.s: examples/cpp/example_filter_ground_truth_computer.cpp.s
+.PHONY : examples/cpp/example_filter_ground_truth_computer.s
+
+# target to generate assembly for a file
+examples/cpp/example_filter_ground_truth_computer.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/example_filter_ground_truth_computer.dir/build.make CMakeFiles/example_filter_ground_truth_computer.dir/examples/cpp/example_filter_ground_truth_computer.cpp.s
+.PHONY : examples/cpp/example_filter_ground_truth_computer.cpp.s
 
 examples/cpp/example_point_search.o: examples/cpp/example_point_search.cpp.o
 .PHONY : examples/cpp/example_point_search.o
@@ -472,7 +546,9 @@ help:
 	@echo "... example_cluster_level_search"
 	@echo "... example_conjunction_search"
 	@echo "... example_dataset_creation"
+	@echo "... example_disjunction_search"
 	@echo "... example_dynamic_filtering_search"
+	@echo "... example_filter_ground_truth_computer"
 	@echo "... example_point_search"
 	@echo "... example_range_search"
 	@echo "... hnswlib"
@@ -486,9 +562,15 @@ help:
 	@echo "... examples/cpp/example_dataset_creation.o"
 	@echo "... examples/cpp/example_dataset_creation.i"
 	@echo "... examples/cpp/example_dataset_creation.s"
+	@echo "... examples/cpp/example_disjunction_search.o"
+	@echo "... examples/cpp/example_disjunction_search.i"
+	@echo "... examples/cpp/example_disjunction_search.s"
 	@echo "... examples/cpp/example_dynamic_filtering_search.o"
 	@echo "... examples/cpp/example_dynamic_filtering_search.i"
 	@echo "... examples/cpp/example_dynamic_filtering_search.s"
+	@echo "... examples/cpp/example_filter_ground_truth_computer.o"
+	@echo "... examples/cpp/example_filter_ground_truth_computer.i"
+	@echo "... examples/cpp/example_filter_ground_truth_computer.s"
 	@echo "... examples/cpp/example_point_search.o"
 	@echo "... examples/cpp/example_point_search.i"
 	@echo "... examples/cpp/example_point_search.s"

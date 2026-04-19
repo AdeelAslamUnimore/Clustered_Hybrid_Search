@@ -146,6 +146,8 @@ public:
     {
         // double x = static_cast<double>(convertDateStringToTimestamp(date));
         return slope * date + intercept;
+
+        
     }
     // Predict the CDF for integer item
     double predict_int(const int &item) const

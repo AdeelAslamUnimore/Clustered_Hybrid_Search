@@ -16,6 +16,9 @@
 #include <random>
 
 using namespace std;
+
+std::unordered_map<std::string, std::string> reading_constants(const std::string &path);
+std::vector<int> parseIntList(const std::string &str);
 std::unordered_map<unsigned int, std::vector<std::string>> reading_meta_data(const string &file_path);
 pair<vector<vector<float>>, vector<vector<string>>> reading_queries(const string &file_path, int &dim);
 vector<float> splitToFloat(const string &str, char delimiter)
@@ -184,24 +187,29 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
         }
     }
 }
-void batch_process_queries(clustered_hybrid_search::ClusterLevelFilteringHNSW<float> *alg_query_aware, float *query_data, std::vector<std::vector<std::string>> &queries_meta_data, std::unordered_map<unsigned int, std::vector<std::string>> &meta_data, int dim, size_t num_threads);
+void batch_process_queries(const std::unordered_map<std::string, std::string> &constants, clustered_hybrid_search::ClusterLevelFilteringHNSW<float> *alg_query_aware, float *query_data, std::vector<std::vector<std::string>> &queries_meta_data, std::unordered_map<unsigned int, std::vector<std::string>> &meta_data, int dim, size_t num_threads);
 int main(int argc, char const *argv[])
 {
 
+    std::string path_constants = "../examples/constants/cluster_level_search_highselectivity.txt";
+    std::unordered_map<std::string, std::string> constants = reading_constants(path_constants);
     /* code */
-    int dim = 768;
-    std::unordered_map<unsigned int, std::vector<std::string>> meta_data = reading_meta_data("/iridisfs/scratch/aa5f25/datasets/TripClick/TripClick_docs_with_correlation.csv");
-    int max_elements = meta_data.size();
+    int dim = std::stoi(constants.at("DIM"));
+    ;
+    std::unordered_map<unsigned int, std::vector<std::string>> meta_data = reading_meta_data(constants.at("META_DATA_PATH"));
+    int max_elements = std::stoi(constants.at("TOTAL_ELEMENTS")); // meta_data.size();
     hnswlib::L2Space space(dim);
+   
+    clustered_hybrid_search::ClusterLevelFilteringHNSW<float> *alg_query_aware = new clustered_hybrid_search::ClusterLevelFilteringHNSW<float>(&space, max_elements, constants.at("INDEX_PATH"), meta_data); // Load existing index
+                                                                                                                                                                                                        // alg_query_aware->clustering_and_maintaining_sketches(80);
+                                                                                                                                                                                                             // clustered_hybrid_search::PredictivePointHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictivePointHNSW<float>(&space, max_elements, "/home/aa5f25/Index/index.bin", meta_data); // Load existing index
+    alg_query_aware->clustering_and_maintaining_sketches(std::stoi(constants.at("CLUSTER_SIZE")));
 
-    clustered_hybrid_search::ClusterLevelFilteringHNSW<float> *alg_query_aware = new clustered_hybrid_search::ClusterLevelFilteringHNSW<float>(&space, max_elements, "/scratch/aa5f25/datasets/TripClick/index.bin", meta_data); // Load existing index
-                                                                                                                                                                                                                 // alg_query_aware->clustering_and_maintaining_sketches(80);
-                                                                                                                                                                                                                 // clustered_hybrid_search::PredictivePointHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictivePointHNSW<float>(&space, max_elements, "/home/aa5f25/Index/index.bin", meta_data); // Load existing index
-    alg_query_aware->clustering_and_maintaining_sketches(10000);
+       
 
     // alg_query_aware->clustering_maintaining_sketches_for_two_hop(50000);
 
-    pair<vector<vector<float>>, vector<vector<string>>> query_reading_results = reading_queries("/iridisfs/scratch/aa5f25/datasets/TripClick/TripClick_queries_with_correlation.csv", dim);
+    pair<vector<vector<float>>, vector<vector<string>>> query_reading_results = reading_queries(constants.at("QUERIES_PATH"), dim);
     std::cout << "Read all queries" << std::endl;
     float *query_data = new float[dim * query_reading_results.first.size()];
     int index_of_query_vector = 0;
@@ -225,13 +233,13 @@ int main(int argc, char const *argv[])
             }
         }
     }
-
-    batch_process_queries(
-        alg_query_aware,
-        query_data,
-        query_reading_results.second,
-        meta_data,
-        dim, 40);
+ 
+    batch_process_queries(constants,
+                          alg_query_aware,
+                          query_data,
+                          query_reading_results.second,
+                          meta_data,
+                          dim, 40);
     // /*num_threads=*/8);
     // alg_query_aware->freeMemory();
     delete[] query_data;
@@ -258,17 +266,15 @@ reading_meta_data(const std::string &file_path)
     while (std::getline(file, line))
     {
         std::stringstream ss(line);
-        std::string embedding, skip, skip1, skip2, skip3,skip4, attribute;
+        std::string embedding, skip, skip1, skip2, attribute;
 
         // CSV format: embedding;attribute
-        std::getline(ss, embedding, ';');
-       // std::getline(ss, skip, ';');
-        // std::getline(ss, skip1, ';');
-        // std::getline(ss, skip2, ';');
-        // std::getline(ss, skip3, ';');
-        // std::getline(ss, skip4, ';');
 
+        std::getline(ss, skip, ';');
+        std::getline(ss, embedding, ';');
+        std::getline(ss, skip1, ';');
         std::getline(ss, attribute, ';');
+        std::getline(ss, skip2, ';');
 
         std::vector<std::string> attr_vec;
         std::stringstream attr_ss(attribute);
@@ -279,7 +285,7 @@ reading_meta_data(const std::string &file_path)
             // Trim whitespace
             token.erase(0, token.find_first_not_of(" \t\n\r\f\v"));
             token.erase(token.find_last_not_of(" \t\n\r\f\v") + 1);
-
+            transform(token.begin(), token.end(), token.begin(), ::tolower);
             if (!token.empty())
                 attr_vec.push_back(token);
         }
@@ -305,16 +311,17 @@ pair<vector<vector<float>>, vector<vector<string>>> reading_queries(const string
 
     while (getline(file, line))
     {
-        stringstream ss(line);
-        string embedding, skip, skip1, skip2, skip3,skip4, attribute;
 
-        getline(ss, embedding, ';');
-       // getline(ss, skip, ';');
-        // getline(ss, skip1, ';');
-        // getline(ss, skip2, ';');
-        // getline(ss, skip3, ';');
-        // getline(ss, skip4, ';');
-        getline(ss, attribute, ';');
+        stringstream ss(line);
+        std::string embedding, skip, skip1, skip2, attribute;
+
+        // CSV format: embedding;attribute
+
+        std::getline(ss, skip, ';');
+        std::getline(ss, embedding, ';');
+        std::getline(ss, skip1, ';');
+        std::getline(ss, attribute, ';');
+        std::getline(ss, skip2, ';');
 
         if (!isNullOrEmpty(embedding))
         {
@@ -331,29 +338,31 @@ pair<vector<vector<float>>, vector<vector<string>>> reading_queries(const string
     return {total_embeddings, all_attributes};
 }
 
-void batch_process_queries(
-    clustered_hybrid_search::ClusterLevelFilteringHNSW<float> *alg_query_aware,
-    float *query_data,
-    std::vector<std::vector<std::string>> &queries_meta_data,
-    std::unordered_map<unsigned int, std::vector<std::string>> &meta_data,
-    int dim,
-    size_t num_threads)
+void batch_process_queries(const std::unordered_map<std::string, std::string> &constants,
+                           clustered_hybrid_search::ClusterLevelFilteringHNSW<float> *alg_query_aware,
+                           float *query_data,
+                           std::vector<std::vector<std::string>> &queries_meta_data,
+                           std::unordered_map<unsigned int, std::vector<std::string>> &meta_data,
+                           int dim,
+                           size_t num_threads)
 {
-    std::vector<int> ef_values = {10, 20, 60, 200, 400, 800, 1000, 1200, 1300};
+    // std::vector<int> ef_values = {20, 40, 80};
+    std::vector<int> ef_values = parseIntList(constants.at("EFS"));
+    
 
     // Track total time per ef
     std::unordered_map<int, double> totalTimePerEfs;
 
     for (int ef : ef_values)
     {
-        size_t batch_size = 1000;
+        size_t batch_size = std::stoi(constants.at("BATCH_OF_QUERIES"));
         size_t total_elements = alg_query_aware->max_elements_;
         size_t num_batches =
             (queries_meta_data.size() + batch_size - 1) / batch_size;
 
         // Set ef once per run
         alg_query_aware->setEf(ef);
-        alg_query_aware->popularityThresoldComputation();
+       // alg_query_aware->popularityThresoldComputation();
 
         for (size_t b = 0; b < num_batches; b++)
         {
@@ -361,7 +370,7 @@ void batch_process_queries(
             size_t end = std::min(start + batch_size, queries_meta_data.size());
 
             std::string filter_file =
-                "/iridisfs/scratch/aa5f25/datasets/TripClick/Filteres/filter_batch_" +
+                constants.at("FILTER_PATH") +
                 std::to_string(start) + ".bin";
 
             std::vector<char> filter_ids_map;
@@ -429,9 +438,8 @@ void batch_process_queries(
                 threads = std::stoi(cpus);
             }
 
-            // std::cout << "Running batch " << b + 1 << "/" << num_batches
-            //           << " with ef=" << ef
-            //           << " using " << threads << " threads" << std::endl;
+            std::string results_path = constants.at("RESULTS");
+            int top_k = std::stoi(constants.at("TOP_K"));
 
             ParallelFor(
                 start,
@@ -444,8 +452,8 @@ void batch_process_queries(
                         query_data + row * dim,
                         row,
                         start,
-                        10,
-                        queries_meta_data[row]);
+                        top_k,
+                        queries_meta_data[row], results_path);
                 });
 
             auto batch_end_time =
@@ -484,4 +492,65 @@ void batch_process_queries(
     }
 
     alg_query_aware->freeMemory();
+}
+
+std::vector<int> parseIntList(const std::string &str)
+{
+    std::vector<int> result;
+    std::stringstream ss(str);
+    std::string item;
+
+    while (std::getline(ss, item, ','))
+    {
+        result.push_back(std::stoi(item));
+    }
+
+    return result;
+}
+
+std::unordered_map<std::string, std::string>
+reading_constants(const std::string &path)
+{
+    std::unordered_map<std::string, std::string> constants;
+    std::ifstream file(path);
+
+    if (!file)
+    {
+        std::cerr << "Error opening file!\n";
+        return constants;
+    }
+
+    std::string line;
+
+    while (std::getline(file, line))
+    {
+        // 1. Remove leading spaces
+        line.erase(0, line.find_first_not_of(" \t"));
+
+        // 2. Skip empty lines
+        if (line.empty())
+            continue;
+
+        // 3. Skip full-line comments
+        if (line[0] == '#')
+            continue;
+
+        // 4. Remove inline comments
+        size_t comment_pos = line.find('#');
+        if (comment_pos != std::string::npos)
+        {
+            line = line.substr(0, comment_pos);
+        }
+
+        // 5. Parse key and value
+        std::istringstream iss(line);
+        std::string key, value;
+
+        if (iss >> key >> value)
+        {
+            constants[key] = value;
+        }
+    }
+
+    return constants;
 }

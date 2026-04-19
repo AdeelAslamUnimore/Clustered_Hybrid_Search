@@ -94,6 +94,7 @@ namespace clustered_hybrid_search
         // We also can also consider the full keys which later we conider for entry points selection during search
         void clustering_and_maintaining_sketches(tableint size_of_cluster)
         {
+          
             unsigned int clusterNumber = 0;
             int counterForFilter = 0;
             // Use single CMS instance instead of vector
@@ -102,7 +103,7 @@ namespace clustered_hybrid_search
             std::unordered_set<tableint> visitedIds;
             std::unordered_set<tableint> visitedIdsLocally; // Keeping track of local visited Ids for a cluster
 
-            for (tableint id = 0; id < meta_data_predicates.size(); id++)
+            for (tableint id = 0; id < this->max_elements_; id++)
             {
                 if (visitedIds.find(id) != visitedIds.end())
                     continue;
@@ -342,7 +343,7 @@ namespace clustered_hybrid_search
         }
         // Search Strategies
 
-        void searchPointQueries(const void *query_data, size_t query_number, size_t start, size_t k, std::vector<std::string> &query_attribute)
+        void searchPointQueries(const void *query_data, size_t query_number, size_t start, size_t k, std::vector<std::string> &query_attribute, std::string &result_path)
 
         {
             size_t filter_offset = (query_number - start) * max_elements_;
@@ -431,9 +432,7 @@ namespace clustered_hybrid_search
                     // Early exit per cluster
                     if (local_count >= early_exit_threshold)
                     {
-                        // std::cout << "Early Exit: local_count = " << local_count
-                        //           << ", estimated_count = " << estimated_count
-                        //           << ", threshold = " << early_exit_threshold << std::endl;
+                       
                         break;
                     }
                 }
@@ -450,7 +449,7 @@ namespace clustered_hybrid_search
                 results.push_back(std::pair<dist_t, size_t>(rez.first, this->getExternalLabel(rez.second)));
                 top_candidates.pop();
             }
-            std::string filename = "/iridisfs/scratch/aa5f25/datasets/TripClick/Results/" + std::to_string(this->ef_);
+            std::string filename = result_path + std::to_string(this->ef_);
             create_directory_if_not_exists(filename);
             filename += "/Q" +
                         std::to_string(query_number) + ".csv";

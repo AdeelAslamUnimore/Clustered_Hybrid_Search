@@ -126,6 +126,13 @@ if(HNSWLIB_EXAMPLES)
 
     add_executable(example_dataset_creation examples/cpp/example_dataset_creation.cpp)
     target_link_libraries(example_dataset_creation  hnswlib)
+
+    add_executable(example_disjunction_search examples/cpp/example_disjunction_search.cpp)
+    target_link_libraries(example_disjunction_search  hnswlib)
+
+
+    add_executable(example_filter_ground_truth_computer examples/cpp/example_filter_ground_truth_computer.cpp)
+    target_link_libraries(example_filter_ground_truth_computer  hnswlib)
     # tests
 
 endif()

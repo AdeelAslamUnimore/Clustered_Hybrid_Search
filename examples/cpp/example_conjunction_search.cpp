@@ -1,5 +1,5 @@
 #include "../../hnswlib/hnswlib.h"
-#include "../../predictive_conjuctive_queries/predictive_conjuctive_queries_clustering.h"
+#include "../../predictive_hybrid_queries/predictive_conjuctive_queries_clustering.h"
 #include <thread>
 #include <algorithm>
 #include <sys/stat.h>

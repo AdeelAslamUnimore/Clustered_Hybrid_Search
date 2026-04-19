@@ -242,13 +242,13 @@ CMakeFiles/example_conjunction_search.dir/examples/cpp/example_conjunction_searc
  /usr/include/c++/8/bits/refwrap.h \
  /usr/include/c++/8/bits/shared_ptr_atomic.h \
  /usr/include/c++/8/backward/auto_ptr.h \
- /home/aa5f25/TKDEReview/examples/cpp/../../predictive_conjuctive_queries/predictive_conjuctive_queries_clustering.h \
- /home/aa5f25/TKDEReview/examples/cpp/../../predictive_conjuctive_queries/../predictive_range_queries/ranges.h \
- /home/aa5f25/TKDEReview/examples/cpp/../../predictive_conjuctive_queries/../predictive_point_queries/memory_access.h \
- /home/aa5f25/TKDEReview/examples/cpp/../../predictive_conjuctive_queries/../predictive_point_queries/count_min_sketch_min_hash.h \
+ /home/aa5f25/TKDEReview/examples/cpp/../../predictive_hybrid_queries/predictive_conjuctive_queries_clustering.h \
+ /home/aa5f25/TKDEReview/examples/cpp/../../predictive_hybrid_queries/../predictive_range_queries/ranges.h \
+ /home/aa5f25/TKDEReview/examples/cpp/../../predictive_hybrid_queries/../predictive_point_queries/memory_access.h \
+ /home/aa5f25/TKDEReview/examples/cpp/../../predictive_hybrid_queries/../predictive_point_queries/count_min_sketch_min_hash.h \
  /usr/include/c++/8/set /usr/include/c++/8/bits/stl_tree.h \
  /usr/include/c++/8/bits/stl_set.h /usr/include/c++/8/bits/stl_multiset.h \
- /home/aa5f25/TKDEReview/examples/cpp/../../predictive_conjuctive_queries/../predictive_range_queries/regression.h \
+ /home/aa5f25/TKDEReview/examples/cpp/../../predictive_hybrid_queries/../predictive_range_queries/regression.h \
  /usr/include/c++/8/sstream /usr/include/c++/8/bits/sstream.tcc \
  /usr/include/c++/8/iomanip /usr/include/c++/8/locale \
  /usr/include/c++/8/bits/locale_facets_nonio.h \
