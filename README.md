@@ -144,7 +144,7 @@ make
 
 ## 📬 Contact
 
-If you encounter any issues or need assistance while running this code, feel free to reach out:
+If you encounter any issues or need assistance while running this code, feel free to reach out or open an issue:
 
 **A. Aslam**  
 📧 [A.Aslam@soton.ac.uk](mailto:A.Aslam@soton.ac.uk)
