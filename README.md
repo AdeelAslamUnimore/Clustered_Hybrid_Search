@@ -1,1 +1,1 @@
-How to Clone: git clone -b master https://github.com/AdeelAslamSoton/TKDEReview.git
+How to Clone please 
