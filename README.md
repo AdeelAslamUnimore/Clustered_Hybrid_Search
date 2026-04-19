@@ -101,6 +101,43 @@ make
 >    ./example_cluster_level_search
 >    ```
 
+
+---
+
+## 🔍 Range Query Execution
+
+> **📝 Notes:**
+
+> 1. Run using:
+>    ```bash
+>    ./example_range_search.cpp
+>    ```
+
+
+---
+
+## 🔍 Disjunction Query Execution
+
+> **📝 Notes:**
+
+>1. Run using:
+>    ```bash
+>    ./example_disjunction_search.cpp
+>    ```
+
+
+---
+
+## 🔍 Conjunction Query Execution
+
+> **📝 Notes:**
+
+>1. Run using:
+>    ```bash
+>    ./example_conjunction_search.cpp
+>    ```
+
+
 ---
 
 ## 📬 Contact
