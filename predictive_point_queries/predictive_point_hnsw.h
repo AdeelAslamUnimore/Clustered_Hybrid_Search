@@ -665,7 +665,7 @@ namespace clustered_hybrid_search
                 results;
 
             // Get initial top-k candidates
-            auto search_results = this->searchKnnForPredictiveStructures(query_data, k, &distance_map);
+            auto search_results = this->searchKnnForPredictiveStructures(query_data, topk, &distance_map);
             // Pre-allocate with estimated size
             const size_t estimated_size = search_results.size();
             std::unordered_set<tableint> visitedIds;
@@ -677,7 +677,7 @@ namespace clustered_hybrid_search
             std::vector<tableint> indices;
             indices.reserve(estimated_size);
 
-            const size_t result_limit = k * 2;
+            const size_t result_limit = topk * 2;
             // Drain search results and apply filtering
 
             while (!search_results.empty())
@@ -693,7 +693,7 @@ namespace clustered_hybrid_search
             }
 
             // Early exit if we have enough results
-            if (results.size() > k && results.size() <= result_limit)
+            if (results.size() >= topk && results.size() <= result_limit)
             {
 
                 // One-hop expansion for all indices
@@ -775,7 +775,7 @@ namespace clustered_hybrid_search
             else
             {
                 // Fallback: write k dummy rows
-                for (size_t i = 0; i < k; i++)
+                for (size_t i = 0; i < topk; i++)
                     out << -1 << "," << std::numeric_limits<float>::max() << "\n";
             }
 

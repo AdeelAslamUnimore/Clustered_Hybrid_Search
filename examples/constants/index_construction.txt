@@ -1,8 +1,8 @@
-DIM 1024
+DIM 128
 M 32
 EFC 16
 NUM_THREADS 40
-TOTAL_ELEMENTS 10000
-INDEX_PATH /scratch/aa5f25/datasets/yt8m/index.bin
+TOTAL_ELEMENTS 1289619
+INDEX_PATH /scratch/aa5f25/datasets/yt8m/index_audio.bin
 DATASET_FILE /scratch/aa5f25/datasets/yt8m/yt_data.csv
 

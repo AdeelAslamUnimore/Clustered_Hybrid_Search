@@ -166,12 +166,14 @@ pair<vector<vector<float>>, vector<string>> reading_files(const string &file_pat
         // CSV format: embedding;attribute
 
         std::getline(ss, skip, ';');
+         std::getline(ss, skip1, ';');
         std::getline(ss, embedding, ';');
-        std::getline(ss, skip1, ';');
-        std::getline(ss, attribute, ';');
+        // std::getline(ss, skip1, ';');
+        // std::getline(ss, attribute, ';');
         std::getline(ss, skip2, ';');
         std::getline(ss, skip3, ';');
         std::getline(ss, skip4, ';');
+        std::getline(ss, skip5, ';');
 
         if (!isNullOrEmpty(embedding))
         {
