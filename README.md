@@ -48,8 +48,8 @@ make
 <<<<<<< HEAD
 > - Run the script to compute the recall and generate summary results.
 =======
-> - Run the script to compute recall and generate summary results.
->>>>>>> fe8f3f5 (Updates)
+> - Run the Notebook script to compute recall and generate summary results.
+>>>>>>> 
 
 ---
 
@@ -113,8 +113,8 @@ make
 ## 🔍 Range Query Execution
 
 > **📝 Notes:**
-
-> 1. Run using:
+> 1. Update the associated constant file with correct paths and parameters
+> 2. Run using:
 >    ```bash
 >    ./example_range_search.cpp
 >    ```
@@ -125,8 +125,8 @@ make
 ## 🔍 Disjunction Query Execution
 
 > **📝 Notes:**
-
->1. Run using:
+>1. Update the associated constant file with correct paths and parameters
+>2. Run using:
 >    ```bash
 >    ./example_disjunction_search.cpp
 >    ```
@@ -137,8 +137,8 @@ make
 ## 🔍 Conjunction Query Execution
 
 > **📝 Notes:**
-
->1. Run using:
+>1.  Update the associated constant file with correct paths and parameters
+>2. Run using:
 >    ```bash
 >    ./example_conjunction_search.cpp
 >    ```
