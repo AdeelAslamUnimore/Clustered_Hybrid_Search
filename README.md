@@ -75,7 +75,7 @@ make
 >    ```
 > 4. 🗃️ Filter maps will be cached in `FILTER_PATH` to avoid recomputation and improve performance.
 > 5. 🚨 **IMPORTANT:** Keep `BATCH_OF_QUERIES` and `FILTER_PATH` consistent across **all** experiments. The filter can be computed once and reused for all runs.
-> 6. This consistency ensures reproducibility and alignment with **ACON** and **NaviX** experimental setups.
+> 6. This consistency ensures reproducibility and alignment with **ACORN** and **NaviX** experimental setups.
 
 ---
 
