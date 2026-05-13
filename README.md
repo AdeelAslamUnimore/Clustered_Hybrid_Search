@@ -45,7 +45,7 @@ make
 > - Use the folder /examples/python_notebook/Recall_compute.ipynb
 > - Update the folder paths (`ground_truth_folder`, `algorithm_base_folder`, `output_base_folder`) to match your local dataset and result directories **before running**.
 > - Ensure result folders are named according to EFS values (e.g., `20`, `40`, `100`, ...).
-> - Run the script to compute recall and generate summary results.
+> - Run the script to compute the recall and generate summary results.
 
 ---
 
