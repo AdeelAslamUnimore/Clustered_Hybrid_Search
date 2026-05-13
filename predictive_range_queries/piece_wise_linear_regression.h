@@ -52,6 +52,7 @@ private:
     // -----------------------------------------------------------------------
     std::unordered_map<int, std::set<char>> map_cdf_range_k_minwise;
     std::unordered_map<int, std::vector<uint16_t>> map_cdf_range_k_minwise_full;
+    std::unordered_map<int, std::set<uint16_t>> map_cdf_range_k_minwise_full_RBT;
     unsigned int total;
 
     bool fitSegment(const std::vector<std::pair<double, double>> &pts,
@@ -286,6 +287,18 @@ public:
     void setMapCdfRangeKMinwiseFull(const std::unordered_map<int, std::vector<uint16_t>> &new_map)
     {
         map_cdf_range_k_minwise_full = new_map;
+    }
+
+    // Getter for full keys with set Red black tree implementation
+    const std::unordered_map<int, std::set<uint16_t>> &getMapCdfRangeKMinwiseFull_RBT() const
+    {
+        return map_cdf_range_k_minwise_full_RBT;
+    }
+
+    // Setter for full keys
+    void setMapCdfRangeKMinwiseFull_RBT(const std::unordered_map<int, std::set<uint16_t>> &new_map)
+    {
+        map_cdf_range_k_minwise_full_RBT = new_map;
     }
 
     // Getter for total count

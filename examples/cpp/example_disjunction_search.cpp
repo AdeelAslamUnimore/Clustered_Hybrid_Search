@@ -15,10 +15,13 @@
 #include <cstdint>
 #include <iostream>
 #include <random>
+#include <random>
 
 using namespace std;
 std::unordered_map<unsigned int, std::pair<std::vector<std::string>, int>> reading_meta_data(const string &file_path);
 pair<vector<vector<float>>, std::vector<std::pair<std::vector<std::string>, std::pair<int, int>>>> reading_queries(const string &file_path, int &dim);
+std::vector<int> parseIntList(const std::string &str);
+std::unordered_map<std::string, std::string> reading_constants(const std::string &path);
 vector<float> splitToFloat(const string &str, char delimiter)
 {
     vector<float> tokens;
@@ -51,21 +54,26 @@ string trim(const string &s)
 }
 vector<string> split_and_clean(const string &s)
 {
+    vector<string> result;
+    stringstream ss(s);
+    string token;
 
-    // Split attribute by ',' into vector
-    std::vector<std::string> attr_vec;
-    std::stringstream attr_ss(s);
-    std::string token;
-    while (std::getline(attr_ss, token, ','))
+    while (getline(ss, token, ','))
     {
         // Trim whitespace
-        token.erase(0, token.find_first_not_of(" \t\n\r\f\v"));
-        token.erase(token.find_last_not_of(" \t\n\r\f\v") + 1);
-
+        token = trim(token);
+        // Remove quotes
+        token.erase(remove(token.begin(), token.end(), '"'), token.end());
+        token.erase(remove(token.begin(), token.end(), '\''), token.end());
+        // Convert to lowercase
+        transform(token.begin(), token.end(), token.begin(), ::tolower);
+        // Add if not empty
         if (!token.empty())
-            attr_vec.push_back(token);
+        {
+            result.push_back(token);
+        }
     }
-    return attr_vec;
+    return result;
 }
 void create_directory_if_not_exists(const std::string &path)
 {
@@ -180,49 +188,28 @@ inline void ParallelFor(size_t start, size_t end, size_t numThreads, Function fn
         }
     }
 }
-void batch_process_queries(
-    clustered_hybrid_search::PredictiveDisjunctionHNSW<float> *alg_query_aware,
-    float *query_data,
-    std::vector<std::pair<std::vector<std::string>, std::pair<int, int>>> &queries_meta_data, // Updated this line
-    std::unordered_map<unsigned int, std::pair<std::vector<std::string>, int>> &meta_data,
-    int dim,
-    size_t num_threads);
+void batch_process_queries(clustered_hybrid_search::PredictiveDisjunctionHNSW<float> *alg_query_aware, float *query_data, std::vector<std::pair<std::vector<std::string>, std::pair<int, int>>> &queries_meta_data, std::unordered_map<unsigned int, std::pair<std::vector<std::string>, int>> &meta_data, int dim, size_t num_threads, std::unordered_map<std::string, std::string> &constants);
 int main(int argc, char const *argv[])
 {
-    /* code */
-    int dim = 1024;
 
-    std::unordered_map<unsigned int, std::pair<std::vector<std::string>, int>> meta_data = reading_meta_data("/scratch/aa5f25/datasets/yt8m/yt_data.csv");
+    std::string path_constants = "../examples/constants/disjunctive_query.txt";
+    std::unordered_map<std::string, std::string> constants = reading_constants(path_constants);
+
+    /* code */
+    int dim = std::stoi(constants.at("DIM"));
+
+    std::unordered_map<unsigned int, std::pair<std::vector<std::string>, int>> meta_data = reading_meta_data(constants.at("META_DATA_PATH"));
 
     int max_elements = meta_data.size();
 
     hnswlib::L2Space space(dim);
 
-    clustered_hybrid_search::PredictiveDisjunctionHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictiveDisjunctionHNSW<float>(&space, max_elements, "/scratch/aa5f25/datasets/yt8m/index.bin", meta_data); // Load existing index
+    clustered_hybrid_search::PredictiveDisjunctionHNSW<float> *alg_query_aware = new clustered_hybrid_search::PredictiveDisjunctionHNSW<float>(&space, max_elements, constants.at("INDEX_PATH"), meta_data); // Load existing index
 
-    // alg_query_aware->clustering_for_cms_and_cdf_filtering(100);
-    auto start = std::chrono::high_resolution_clock::now();
+    alg_query_aware->clustering_for_cms_and_cdf_filtering_for_pieceWise_regression(std::stoi(constants.at("CLUSTER_SIZE")));
 
-    alg_query_aware->clustering_for_cms_and_cdf_filtering_for_quantile_regression(10000);
-
-    //alg_query_aware->clustering_for_cms_and_cdf_filtering_for_pieceWise_regression(20000);
-
-    auto end = std::chrono::high_resolution_clock::now();
-
-    std::chrono::duration<double> duration = end - start;
-
-    std::cout << "Start time: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(start.time_since_epoch()).count()
-              << " ms\n";
-
-    std::cout << "End time: "
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end.time_since_epoch()).count()
-              << " ms\n";
-
-    std::cout << "Execution time: " << duration.count() << " seconds\n";
-    exit(0);
-
-    pair<vector<vector<float>>, std::vector<std::pair<std::vector<std::string>, std::pair<int, int>>>> query_reading_results = reading_queries("/scratch/aa5f25/datasets/yt8m/Queries_for_conjunctive_disjunctive.csv", dim);
+    // alg_query_aware-> inspect_cms_map();
+    pair<vector<vector<float>>, std::vector<std::pair<std::vector<std::string>, std::pair<int, int>>>> query_reading_results = reading_queries(constants.at("QUERIES_PATH"), dim);
 
     float *query_data = new float[dim * query_reading_results.first.size()];
     int index_of_query_vector = 0;
@@ -246,17 +233,16 @@ int main(int argc, char const *argv[])
         }
     }
 
+   
     batch_process_queries(
         alg_query_aware,
         query_data,
         query_reading_results.second,
         meta_data,
-        dim, 40);
-    // /*num_threads=*/8);
-    // alg_query_aware->freeMemory();
+        dim, std::stoi(constants.at("NUM_THREADS")), constants);
 
-    delete[] query_data;
     delete alg_query_aware;
+     delete[] query_data;
 }
 // Reading the Meta data
 std::unordered_map<unsigned int, std::pair<std::vector<std::string>, int>>
@@ -307,16 +293,8 @@ reading_meta_data(const std::string &file_path)
         std::vector<std::string> attr_vec;
         std::stringstream attr_ss(attribute_str);
         std::string token;
-        while (std::getline(attr_ss, token, ','))
-        {
-            // Trim whitespace
-            token.erase(0, token.find_first_not_of(" \t\n\r\f\v"));
-            token.erase(token.find_last_not_of(" \t\n\r\f\v") + 1);
 
-            if (!token.empty())
-                attr_vec.push_back(token);
-        }
-
+        attr_vec = split_and_clean(attribute_str);
         meta_data[line_count] = {attr_vec, range_attribute};
 
         line_count++;
@@ -354,8 +332,9 @@ reading_queries(const string &file_path, int &dim)
 
         // CSV format: embedding;point_attributes;range_start;range_end
         getline(ss, skip1, ';'); // Skip ID or other non-essential field
-        getline(ss, embedding_str, ';');
-        getline(ss, skip2, ';'); // Skip audio
+
+        getline(ss, skip2, ';');         // Skip video
+        getline(ss, embedding_str, ';'); // Skip audio
 
         getline(ss, range_str1, ';');
         getline(ss, range_str2, ';');
@@ -395,17 +374,18 @@ reading_queries(const string &file_path, int &dim)
     return {total_embeddings, all_query_predicates};
 }
 
-void batch_process_queries(clustered_hybrid_search::PredictiveDisjunctionHNSW<float> *alg_query_aware, float *query_data, std::vector<std::pair<std::vector<std::string>, std::pair<int, int>>> &queries_meta_data, std::unordered_map<unsigned int, std::pair<std::vector<std::string>, int>> &meta_data, int dim, size_t num_threads)
-
+void batch_process_queries(clustered_hybrid_search::PredictiveDisjunctionHNSW<float> *alg_query_aware, float *query_data, std::vector<std::pair<std::vector<std::string>, std::pair<int, int>>> &queries_meta_data, std::unordered_map<unsigned int, std::pair<std::vector<std::string>, int>> &meta_data, int dim, size_t num_threads, std::unordered_map<std::string, std::string> &constants)
 {
-    std::vector<int> ef_values = {20, 40, 80, 100, 200, 300, 500, 800, 1000, 1200, 1500, 1700, 1900, 2100, 2300}; //{10, 20, 60, 200, 400, 800, 1000, 1200, 1300};
+
+    std::vector<int> ef_values = parseIntList(constants.at("EFS")); //{10, 20, 60, 200, 400, 800, 1000, 1200, 1300};
 
     // Track total time per ef
     std::unordered_map<int, double> totalTimePerEfs;
 
     for (int ef : ef_values)
     {
-        size_t batch_size = 1000;
+      
+        size_t batch_size = std::stoi(constants.at("BATCH_OF_QUERIES"));
         size_t total_elements = alg_query_aware->max_elements_;
         size_t num_batches = (queries_meta_data.size() + batch_size - 1) / batch_size;
 
@@ -418,7 +398,7 @@ void batch_process_queries(clustered_hybrid_search::PredictiveDisjunctionHNSW<fl
             size_t end = std::min(start + batch_size, queries_meta_data.size());
 
             std::string filter_file =
-                "/scratch/aa5f25/datasets/yt8m/filters/filter_batch_" +
+                constants.at("FILTER_PATH") +
                 std::to_string(start) + ".bin";
             std::vector<char> filter_ids_map;
 
@@ -453,7 +433,7 @@ void batch_process_queries(clustered_hybrid_search::PredictiveDisjunctionHNSW<fl
                                 // Inner loop: each attribute in the current metadata row
                                 for (const auto &row_attr : row_attributes.first)
                                 {
-                                    if ((q_attr == row_attr)||(row_attributes.second >= range_attribute.first && row_attributes.second <= range_attribute.second))
+                                    if ((q_attr == row_attr)&&(row_attributes.second >= range_attribute.first || row_attributes.second <= range_attribute.second))
                                     {
                                         match_found = true;
                                         break; // Break inner loop
@@ -471,29 +451,25 @@ void batch_process_queries(clustered_hybrid_search::PredictiveDisjunctionHNSW<fl
 
             // Apply filter
             alg_query_aware->predicateCondition(filter_ids_map.data());
+            alg_query_aware->popularity_threshold(std::stof(constants.at("POPULARITY_THRESHOLD_CMS")), std::stof(constants.at("POPULARITY_THRESHOLD_RM"))); // Example threshold, can be tuned or computed based on cluster statistics
 
             // ------------------ Run queries for this batch ------------------
             auto batch_start_time =
                 std::chrono::high_resolution_clock::now();
 
             // Determine threads
-            size_t num_threads = std::thread::hardware_concurrency();
-            if (const char *cpus = std::getenv("SLURM_CPUS_PER_TASK"))
-            {
-                num_threads = std::stoi(cpus);
-            }
 
-            // std::cout << "Running batch " << b + 1 << "/" << num_batches
-            //           << " with ef=" << ef
-            //           << " using " << num_threads << " threads" << std::endl;
+            std::string folder_path = constants.at("RESULTS");
+            create_directory_if_not_exists(folder_path);
 
             ParallelFor(
                 start,
                 end,
-                40,
+              1,
                 [&](size_t row, size_t)
                 {
-                    alg_query_aware->search((query_data + row * dim), row, start, queries_meta_data[row].second, queries_meta_data[row].first, 10);
+                    alg_query_aware->search((query_data + row * dim), row, start, queries_meta_data[row].second, queries_meta_data[row].first, std::stoi(constants.at("TOP_K")), folder_path); // topK
+                    // alg_query_aware->search((query_data + row * dim), row, start, queries_meta_data[row].second, queries_meta_data[row].first, 10);
 
                     // alg_query_aware->search((query_data + row * dim),
                     //                         row,
@@ -536,4 +512,65 @@ void batch_process_queries(clustered_hybrid_search::PredictiveDisjunctionHNSW<fl
                   << ", Total Time: " << total_seconds << "s"
                   << ", QPS: " << qps << std::endl;
     }
+}
+
+std::unordered_map<std::string, std::string>
+reading_constants(const std::string &path)
+{
+    std::unordered_map<std::string, std::string> constants;
+    std::ifstream file(path);
+
+    if (!file)
+    {
+        std::cerr << "Error opening file!\n";
+        return constants;
+    }
+
+    std::string line;
+
+    while (std::getline(file, line))
+    {
+        // 1. Remove leading spaces
+        line.erase(0, line.find_first_not_of(" \t"));
+
+        // 2. Skip empty lines
+        if (line.empty())
+            continue;
+
+        // 3. Skip full-line comments
+        if (line[0] == '#')
+            continue;
+
+        // 4. Remove inline comments
+        size_t comment_pos = line.find('#');
+        if (comment_pos != std::string::npos)
+        {
+            line = line.substr(0, comment_pos);
+        }
+
+        // 5. Parse key and value
+        std::istringstream iss(line);
+        std::string key, value;
+
+        if (iss >> key >> value)
+        {
+            constants[key] = value;
+        }
+    }
+
+    return constants;
+}
+
+std::vector<int> parseIntList(const std::string &str)
+{
+    std::vector<int> result;
+    std::stringstream ss(str);
+    std::string item;
+
+    while (std::getline(ss, item, ','))
+    {
+        result.push_back(std::stoi(item));
+    }
+
+    return result;
 }

@@ -1,7 +1,9 @@
 #include "hnswlib/hnswlib.h"
 #include "../predictive_point_queries/memory_access.h"
-#include "regression.h"
+#include "piece_wise_linear_regression.h"
 #include "ranges.h"
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <map>
 
 namespace clustered_hybrid_search
@@ -25,15 +27,17 @@ namespace clustered_hybrid_search
     public:
         std::unordered_map<tableint, int> meta_data_predicates;
         char *mem_for_ids_for_clusters{nullptr};
-        std::unordered_map<unsigned int, RegressionModel> mapForRegressionModel;
+        std::unordered_map<unsigned int, PiecewiseRegressionModel> mapForRegressionModel;
         std::unordered_map<tableint, std::unordered_set<unsigned int>> cluster_Mem_chk;
         size_t max_elements;
+        float popularity_threshold;
         char *filter_id_map;
 
     public:
         PredictiveRangeHNSW(hnswlib::SpaceInterface<dist_t> *space, size_t max_elements_, const std::string &location_of_index, std::unordered_map<tableint, int> &meta_data_predicates_)
             : hnswlib::HierarchicalNSW<dist_t>(space, max_elements_)
         {
+
             this->loadIndex(location_of_index, space, max_elements_);
             meta_data_predicates = meta_data_predicates_;
             mem_for_ids_for_clusters = (char *)malloc(max_elements_ * (3 * sizeof(char)));
@@ -114,6 +118,8 @@ namespace clustered_hybrid_search
                 }
                 // Updating the data structure after insertion
                 // Updating the data structure after insertion
+
+               // std::cout << "Cluster Number: " << clusterNumber << " Counter for filter: " << counterForFilter <<"Predicate.."<<predicate_data_CDF.size() << std::endl;
                 if (counterForFilter >= size_of_cluster)
                 {
 
@@ -141,24 +147,24 @@ namespace clustered_hybrid_search
                     // Step 4: Compute the CDF
                     double cumulative_count = 0;
                     //  here count is the of ids vector
-                    std::unordered_map<int, std::vector<uint16_t>> map_cdf_range_k_minwise;
+                    std::unordered_map<int, std::set<uint16_t>> map_cdf_range_k_minwise;
                     for (const auto &[value, ids] : count_map)
                     {
                         cumulative_count += ids.size(); // Increment cumulative count
 
                         double cumulative_probability = cumulative_count / n; // Calculate cumulative probability
                         int label = check_range_search(cumulative_probability);
-                    
+
                         computing_and_inserting_relevant_range_to_vector(label, ids, map_cdf_range_k_minwise);
 
                         cdf.push_back({value, cumulative_probability});
                     }
 
-                    RegressionModel reg_model;
+                    PiecewiseRegressionModel reg_model;
 
                     reg_model.train_int(cdf);
 
-                    reg_model.setMapCdfRangeKMinwiseFull(map_cdf_range_k_minwise);
+                    reg_model.setMapCdfRangeKMinwiseFull_RBT(map_cdf_range_k_minwise);
                     reg_model.setTotal(counterForFilter);
 
                     mapForRegressionModel[clusterNumber] = std::move(reg_model);
@@ -200,7 +206,7 @@ namespace clustered_hybrid_search
                 // Step 4: Compute the CDF
                 double cumulative_count = 0;
                 //  here count is the size of ids vector
-                std::unordered_map<int, std::vector<uint16_t>> map_cdf_range_k_minwise;
+                std::unordered_map<int, std::set<uint16_t>> map_cdf_range_k_minwise;
                 for (const auto &[value, count] : count_map)
                 {
                     cumulative_count += count.size(); // Increment cumulative count
@@ -217,9 +223,9 @@ namespace clustered_hybrid_search
                 //  Flush the predicate Vector
                 // Also in the map also insert the CMS here.
 
-                RegressionModel reg_model;
+                PiecewiseRegressionModel reg_model;
                 reg_model.train_int(cdf);
-                reg_model.setMapCdfRangeKMinwiseFull(map_cdf_range_k_minwise);
+                reg_model.setMapCdfRangeKMinwiseFull_RBT(map_cdf_range_k_minwise);
                 reg_model.setTotal(counterForFilter);
                 mapForRegressionModel[clusterNumber] = std::move(reg_model);
                 clusterNumber++;
@@ -278,20 +284,15 @@ namespace clustered_hybrid_search
             }
         }
 
-      
-        template <typename T>
         void computing_and_inserting_relevant_range_to_vector(
             int &range_no,
             const std::vector<tableint> &ids,
-            std::unordered_map<int, std::vector<T>> &map_cdf_range_k_minwise)
+            std::unordered_map<int, std::set<uint16_t>> &map_cdf_range_k_minwise)
         {
-            // Safety checks
-            static_assert(std::is_unsigned<T>::value, "T must be unsigned");
-            static_assert(sizeof(T) == 1 || sizeof(T) == 2, "T must be uint8_t or uint16_t");
 
             // Get or create the vector for this range
-            std::vector<T> &fingerprint_vec = map_cdf_range_k_minwise[range_no];
-
+            std::set<uint16_t> &fingerprint_vec = map_cdf_range_k_minwise[range_no];
+           // fingerprint_vec.clear();
             // -------------------------------
             // Bottom-k selection using FULL 64-bit hashes
             // -------------------------------
@@ -301,42 +302,17 @@ namespace clustered_hybrid_search
             {
                 uint64_t h = MurmurHash64B(&id, sizeof(id), SEED);
 
-                if (heap.size() < SIZE_Of_K_Min_WISE_HASH)
+                uint16_t fingerprint = static_cast<uint16_t>(h >> 48);
+
+                fingerprint_vec.insert(fingerprint);
+
+                // Ensure we only keep the smallest 'keys' elements
+                if (fingerprint_vec.size() > SIZE_Of_K_Min_WISE_HASH)
                 {
-                    heap.push(h);
+                    // Remove the largest element
+                    auto it = std::prev(fingerprint_vec.end()); // last element
+                    fingerprint_vec.erase(it);
                 }
-                else if (h < heap.top())
-                {
-                    heap.pop();
-                    heap.push(h);
-                }
-            }
-
-            // Clear old vector (optional, if rebuilding)
-            fingerprint_vec.clear();
-
-            // -------------------------------
-            // Truncate AFTER bottom-k selection
-            // -------------------------------
-            while (!heap.empty())
-            {
-                uint64_t h = heap.top();
-                heap.pop();
-
-                // Use MSB bits for T-bit fingerprint
-                T fingerprint = static_cast<T>(h >> (64 - sizeof(T) * 8));
-                fingerprint_vec.push_back(fingerprint);
-            }
-
-            // -------------------------------
-            // Sort vector for SIMD intersection
-            // -------------------------------
-            std::sort(fingerprint_vec.begin(), fingerprint_vec.end());
-
-            // If vector exceeds SIZE_Of_K_Min_WISE_HASH, trim largest
-            if (fingerprint_vec.size() > SIZE_Of_K_Min_WISE_HASH)
-            {
-                fingerprint_vec.resize(SIZE_Of_K_Min_WISE_HASH);
             }
         }
 
@@ -361,28 +337,157 @@ namespace clustered_hybrid_search
 
             // Check if the model exists for the key
             auto it = mapForRegressionModel.find(key);
-            if (it != mapForRegressionModel.end())
+            // if (it != mapForRegressionModel.end())
+            // {
+            //     const PiecewiseRegressionModel &model = it->second;
+            //     // Loop over values from 1 to 12
+            //     for (int x = 0; x <= 14; ++x)
+            //     {
+            //         double predictedCDF = model.predict_int(x); // assuming predict_int(int x) exists
+            //         std::cout << "Predicted CDF for x=" << x << " is " << predictedCDF << std::endl;
+            //         std::cout << "Predicted CDF for x= that for " << model.getMapCdfRangeKMinwiseFull().size() << " is " << predictedCDF << std::endl;
+            //     }
+            // }
+            // else
+            // {
+            //     std::cerr << "No regression model found for key " << key << std::endl;
+            // }
+        }
+
+        // set the popularity threshold for predictive range queries
+        void setPopularityThreshold(float threshold)
+        {
+            this->popularity_threshold = threshold;
+        }
+        void search(const void *query_data, size_t query_number, size_t start, const std::pair<int, int> &query_predicates, size_t top_k, const std::string &folder_path)
+        {
+
+            // std::cout << "Search function called for query number: " << popularity_threshold << std::endl;
+            std::unordered_map<tableint, dist_t> distance_map;
+
+            const size_t filter_offset = (query_number - start) * max_elements;
+
+            // We maintain a max-heap of size k (worst element on top)
+            std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement>
+                results;
+
+            // Get initial top-k candidates
+            auto search_results = this->searchKnnForPredictiveStructures(query_data, top_k, &distance_map);
+
+            // Pre-allocate with estimated size
+            const size_t estimated_size = search_results.size();
+            std::unordered_set<tableint> visitedIds;
+            //  visitedIds.reserve(estimated_size);
+
+            std::unordered_set<tableint> visitedClusters;
+            // visitedClusters.reserve(estimated_size / 10); // Estimate fewer clusters than nodes
+
+            std::vector<tableint> indices;
+            indices.reserve(estimated_size);
+
+            const size_t result_limit = top_k * 2;
+            // Drain search results and apply filtering
+
+            while (!search_results.empty())
             {
-                const RegressionModel &model = it->second;
-                // Loop over values from 1 to 12
-                for (int x = 0; x <= 14; ++x)
+                auto [dist, id] = search_results.top();
+                search_results.pop();
+
+                if (filter_id_map[filter_offset + id])
                 {
-                    double predictedCDF = model.predict_int(x); // assuming predict_int(int x) exists
-                    std::cout << "Predicted CDF for x=" << x << " is " << predictedCDF << std::endl;
-                    std::cout << "Predicted CDF for x= that for " << model.getMapCdfRangeKMinwiseFull().size() << " is " << predictedCDF << std::endl;
-                    
+                    results.emplace(dist, id);
                 }
+                indices.push_back(id);
+            }
+
+            // Early exit if we have enough results
+            if (results.size() >= top_k && results.size() <= result_limit)
+            {
+
+                // One-hop expansion for all indices
+                for (tableint id : indices)
+                {
+                    one_hop_search_neighbors(query_data, id, filter_offset,
+                                             visitedIds, distance_map, results);
+
+                    if (results.size() > result_limit)
+                        break;
+                }
+            }
+
+            for (tableint id : indices)
+            {
+                auto clusters = cluster_contains_attribute(id);
+
+                auto [cluster_id, max_pop] = popularity_computation(clusters, query_predicates);
+
+                // Check if cluster already visited
+                if (!visitedClusters.insert(cluster_id).second)
+                {
+                    // Cluster was already visited, do one-hop
+                    one_hop_search_neighbors(query_data, id, filter_offset,
+                                             visitedIds, distance_map, results);
+                }
+                else
+                {
+                    if (max_pop > popularity_threshold)
+                    {
+                        // std::cout << "Two-hop expansion for ID " << id << " in cluster " << cluster_id << " with popularity " << max_pop <<" popularity threshold "<<popularity_threshold<< std::endl;
+                        two_hop_search_neighbors(query_data, id, filter_offset,
+                                                 visitedIds, distance_map, results);
+                    }
+
+                    else
+                    {
+
+                        one_hop_search_neighbors(query_data, id, filter_offset,
+                                                 visitedIds, distance_map, results);
+                    }
+                }
+            }
+
+            // -------------------
+            // Write results to file
+            // -------------------
+
+            std::string filename = folder_path + std::to_string(this->ef_);
+            create_directory_if_not_exists(filename);
+            filename += "/Q" + std::to_string(query_number) + ".csv";
+
+            std::ofstream out(filename);
+            if (!out.is_open())
+            {
+                std::cerr << "❌ Failed to open file: " << filename << std::endl;
+                return;
+            }
+
+            out << "ID,Distance\n";
+
+            if (!results.empty())
+            {
+                // Extract into vector to reverse order (nearest first)
+                std::vector<std::pair<dist_t, size_t>> ordered_results;
+
+                while (!results.empty())
+                {
+                    ordered_results.push_back(results.top());
+                    results.pop();
+                }
+
+                // Since this is a max-heap, reverse to get smallest distance first
+                std::reverse(ordered_results.begin(), ordered_results.end());
+
+                for (const auto &p : ordered_results)
+                    out << p.second << "," << p.first << "\n";
             }
             else
             {
-                std::cerr << "No regression model found for key " << key << std::endl;
+                // Fallback: write k dummy rows
+                for (size_t i = 0; i < top_k; i++)
+                    out << -1 << "," << std::numeric_limits<float>::max() << "\n";
             }
-        }
 
-        void search(const void *query_data, size_t query_number, const std::pair<int, int> &query_predicates, size_t top_k)
-        {
-            std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> result_queue = predictive_range_query(query_data, query_number, query_predicates, top_k);
-            // std::cout << "Results for query number " << query_number << " :" << result_queue.size() << std::endl;
+            out.close();
         }
 
         std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> predictive_range_query(const void *query_data, size_t query_number, const std::pair<int, int> &query_predicates, size_t top_k)
@@ -410,7 +515,7 @@ namespace clustered_hybrid_search
 
             const size_t filter_offset = query_number * max_elements;
             const size_t result_limit = top_k * 2;
-            const double popularity_threshold = 0.50; // Tuneabable threshold for popularity
+            const double popularity_threshold = this->popularity_threshold; // Use the set popularity threshold
 
             // Phase 1: Process initial search results
             while (!search_results.empty())
@@ -425,6 +530,9 @@ namespace clustered_hybrid_search
 
                 indices.push_back(id);
             }
+
+            if (query_number > 1330)
+                std::cout << "Query Number: " << query_number << " Result Queue Size: " << std::endl;
 
             // Early exit if we have enough results
             if (result_queue.size() > top_k)
@@ -448,7 +556,7 @@ namespace clustered_hybrid_search
             for (tableint id : indices)
             {
                 auto clusters = cluster_contains_attribute(id);
-                std::cout << "Clusters size: " << clusters.size() << std::endl;
+                // std::cout << "Clusters size: " << clusters.size() << std::endl;
                 auto [cluster_id, max_pop] = popularity_computation(clusters, query_predicates);
 
                 // Check if cluster already visited
@@ -538,7 +646,7 @@ namespace clustered_hybrid_search
         }
         // Use it when we use for disk access optimization or use the allocated memory deletion in the destructor
         // One hop Search neighbors
-        void one_hop_search_neighbors(const void *data_point, tableint id, size_t query_number, std::unordered_set<tableint> &visitedIds, std::unordered_map<tableint, dist_t> &distance_map, std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> &result_queue)
+        void one_hop_search_neighbors(const void *data_point, tableint id, const size_t filter_offset, std::unordered_set<tableint> &visitedIds, std::unordered_map<tableint, dist_t> &distance_map, std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> &result_queue)
         {
             int *data = (int *)this->get_linklist0(id);
             size_t size = this->getListCount((linklistsizeint *)data);
@@ -551,7 +659,7 @@ namespace clustered_hybrid_search
                 if (visitedIds.find(candidateId) != visitedIds.end())
                     continue;
                 visitedIds.insert(candidateId);
-                if (!filter_id_map[query_number * max_elements + candidateId])
+                if (!filter_id_map[filter_offset])
                     continue;
 
                 dist_t distance;
@@ -573,7 +681,7 @@ namespace clustered_hybrid_search
         void two_hop_search_neighbors(
             const void *data_point,
             tableint start_id,
-            size_t query_number,
+            const size_t filter_offset,
             std::unordered_set<tableint> &visitedIds,
             std::unordered_map<tableint, dist_t> &distance_map,
             std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> &result_queue)
@@ -592,7 +700,7 @@ namespace clustered_hybrid_search
 
                 // ---------- Distance handling for first hop ----------
                 if (visitedIds.find(firstHopId) == visitedIds.end() &&
-                    filter_id_map[query_number * max_elements + firstHopId])
+                    filter_id_map[filter_offset])
                 {
                     visitedIds.insert(firstHopId);
                     auto it1 = distance_map.find(firstHopId);
@@ -621,7 +729,7 @@ namespace clustered_hybrid_search
                         continue;
                     visitedIds.insert(secondHopId);
 
-                    if (!filter_id_map[query_number * max_elements + secondHopId])
+                    if (!filter_id_map[filter_offset])
                         continue;
 
                     auto it2 = distance_map.find(secondHopId);
@@ -637,6 +745,20 @@ namespace clustered_hybrid_search
             }
         }
 
+        void create_directory_if_not_exists(const std::string &path)
+        {
+            if (mkdir(path.c_str(), 0777) == -1)
+            {
+                if (errno == EEXIST)
+                {
+                    // Directory already exists, that's fine
+                }
+                else
+                {
+                    std::cerr << "Error creating directory: " << path << std::endl;
+                }
+            }
+        }
         ~PredictiveRangeHNSW()
         {
             if (mem_for_ids_for_clusters)

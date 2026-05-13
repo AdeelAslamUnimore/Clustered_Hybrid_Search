@@ -371,9 +371,9 @@ void batch_process_queries(const std::unordered_map<std::string, std::string> co
         alg_query_aware->setEf(ef);
         bool selectivity_based_threshold = false; // set false for dynmaic threshold
         float popularity_threshold = std::stof(constants.at("SELECTIVITY_THRESHOLD"));
-        if(popularity_threshold > 0.0f)
+        if (popularity_threshold > 0.0f)
             selectivity_based_threshold = true;
-      
+
         alg_query_aware->popularityThresoldComputation(selectivity_based_threshold, constants);
 
         for (size_t b = 0; b < num_batches; b++)

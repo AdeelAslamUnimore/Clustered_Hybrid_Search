@@ -6,7 +6,7 @@
 #include "../predictive_point_queries/count_min_sketch_min_hash.h"
 #include "../predictive_range_queries/regression.h"
 #include "../predictive_range_queries/piece_wise_linear_regression.h"
-#include "../predictive_range_queries/quantile_regression.h"
+// #include "../predictive_range_queries/quantile_regression.h"
 #include <vector>
 #include <cstring>
 #include <cstdint>
@@ -35,12 +35,14 @@ namespace clustered_hybrid_search
     public:
         std::unordered_map<tableint, std::pair<std::vector<std::string>, int>> meta_data_predicates;
         std::unordered_map<unsigned int, CountMinSketchMinHash> mapForCMS;
-        //std::unordered_map<unsigned int, PiecewiseRegressionModel> mapForRegressionModel;
-        std::unordered_map<unsigned int, QuantileRegressionModel> mapForRegressionModel;
+        std::unordered_map<unsigned int, PiecewiseRegressionModel> mapForRegressionModel;
+        // std::unordered_map<unsigned int, QuantileRegressionModel> quantileapForRegressionModel;
         std::unordered_map<tableint, std::unordered_set<unsigned int>> cluster_Mem_chk;
         char *mem_for_ids_for_clusters{nullptr};
         char *filter_id_map;
         size_t max_elements_;
+        float CMS_POPULARITY_THRESHOLD=0.0f;
+        float REGRESSION_MODEL_THRESHOLD=0.0f;
 
     public:
         PredictiveDisjunctionHNSW(hnswlib::SpaceInterface<dist_t> *space, size_t max_elements, const std::string &location_of_index, std::unordered_map<tableint, std::pair<std::vector<std::string>, int>> &meta_data_predicates_)
@@ -389,7 +391,7 @@ namespace clustered_hybrid_search
         }
 
         // Searching
-        std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> prediction(const void *query_data, size_t query_number, const std::pair<int, int> &query_range_predicates, const std::vector<std::string> &query_point_predicates, size_t top_k)
+        std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> prediction(const void *query_data, size_t query_number,  size_t start, const std::pair<int, int> &query_range_predicates, const std::vector<std::string> &query_point_predicates, size_t top_k)
         {
             // Map for removing overhead of duplicate distance computation
             std::unordered_map<tableint, dist_t> distance_map;
@@ -411,10 +413,10 @@ namespace clustered_hybrid_search
             std::vector<tableint> indices;
             indices.reserve(estimated_size);
 
-            const size_t filter_offset = query_number * max_elements_;
+            const size_t filter_offset = (query_number-start) * max_elements_;
             const size_t result_limit = top_k * 2;
-            const double popularity_threshold_CMS = 0.10;  // Tuneabable threshold for popularity
-            const double popularity_threshold_CDF = 0.336; // Tuneabable threshold for popularity
+            const double popularity_threshold_CMS = CMS_POPULARITY_THRESHOLD;  // Tuneabable threshold for popularity
+            const double popularity_threshold_CDF = REGRESSION_MODEL_THRESHOLD; // Tuneabable threshold for popularity
 
             // Phase 1: Process initial search results
             while (!search_results.empty())
@@ -462,19 +464,19 @@ namespace clustered_hybrid_search
                 if (cms_pop > popularity_threshold_CMS)
                 {
 
-                    two_hop_search_neighbors(query_data, id, query_number,
+                    two_hop_search_neighbors(query_data, id, filter_offset,
                                              visitedIds, distance_map, result_queue);
                 }
                 else if (cdf_pop > popularity_threshold_CDF)
                 {
 
-                    two_hop_search_neighbors(query_data, id, query_number,
+                    two_hop_search_neighbors(query_data, id, filter_offset,
                                              visitedIds, distance_map, result_queue);
                 }
                 else
                 {
                     // One-hop expansion
-                    one_hop_search_neighbors(query_data, id, query_number,
+                    one_hop_search_neighbors(query_data, id, filter_offset,
                                              visitedIds, distance_map, result_queue);
                 }
 
@@ -586,7 +588,7 @@ namespace clustered_hybrid_search
             return result;
         }
         // One hop Search neighbors
-        void one_hop_search_neighbors(const void *data_point, tableint id, size_t query_number, std::unordered_set<tableint> &visitedIds, std::unordered_map<tableint, dist_t> &distance_map, std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> &result_queue)
+        void one_hop_search_neighbors(const void *data_point, tableint id, size_t filter_offset, std::unordered_set<tableint> &visitedIds, std::unordered_map<tableint, dist_t> &distance_map, std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> &result_queue)
         {
             int *data = (int *)this->get_linklist0(id);
             size_t size = this->getListCount((linklistsizeint *)data);
@@ -599,7 +601,7 @@ namespace clustered_hybrid_search
                 if (visitedIds.find(candidateId) != visitedIds.end())
                     continue;
                 visitedIds.insert(candidateId);
-                if (!filter_id_map[query_number * max_elements_ + candidateId])
+                if (!filter_id_map[filter_offset + candidateId])
                     continue;
 
                 dist_t distance;
@@ -621,7 +623,7 @@ namespace clustered_hybrid_search
         void two_hop_search_neighbors(
             const void *data_point,
             tableint start_id,
-            size_t query_number,
+            size_t filter_offset,
             std::unordered_set<tableint> &visitedIds,
             std::unordered_map<tableint, dist_t> &distance_map,
             std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> &result_queue)
@@ -640,7 +642,7 @@ namespace clustered_hybrid_search
 
                 // ---------- Distance handling for first hop ----------
                 if (visitedIds.find(firstHopId) == visitedIds.end() &&
-                    filter_id_map[query_number * max_elements_ + firstHopId])
+                    filter_id_map[filter_offset + firstHopId])
                 {
                     visitedIds.insert(firstHopId);
                     auto it1 = distance_map.find(firstHopId);
@@ -669,7 +671,7 @@ namespace clustered_hybrid_search
                         continue;
                     visitedIds.insert(secondHopId);
 
-                    if (!filter_id_map[query_number * max_elements_ + secondHopId])
+                    if (!filter_id_map[filter_offset + secondHopId])
                         continue;
 
                     auto it2 = distance_map.find(secondHopId);
@@ -685,13 +687,15 @@ namespace clustered_hybrid_search
             }
         }
 
-        void search(const void *query_data, size_t query_number, size_t start, const std::pair<int, int> &query_range_predicates, const std::vector<std::string> &query_point_predicates, size_t top_k)
+        void search(const void *query_data, size_t query_number, size_t start, const std::pair<int, int> &query_range_predicates, const std::vector<std::string> &query_point_predicates, size_t top_k, std::string &output_dir)
         {
-            std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> results = prediction(query_data, query_number, query_range_predicates, query_point_predicates, top_k);
+       
+          
+            std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> results = prediction(query_data, query_number, start, query_range_predicates, query_point_predicates, top_k);
 
             //  std::priority_queue<Candidate, std::vector<Candidate>, CompareByFirstElement> results = prediction_PF(query_data, query_number, query_range_predicates, query_point_predicates, top_k);
 
-            std::string filename = "/scratch/aa5f25/datasets/yt8m/Results/" + std::to_string(this->ef_);
+            std::string filename = output_dir + std::to_string(this->ef_);
             create_directory_if_not_exists(filename);
             filename += "/Q" + std::to_string(query_number) + ".csv";
 
@@ -966,7 +970,6 @@ namespace clustered_hybrid_search
                     //  here count is the of ids vector
                     std::unordered_map<int, std::vector<uint16_t>> map_cdf_range_k_minwise;
 
-                   
                     for (const auto &[value, ids] : count_map)
                     {
                         cumulative_count += ids.size(); // Increment cumulative count
@@ -977,10 +980,7 @@ namespace clustered_hybrid_search
                         //  computing_and_inserting_relevant_range_to_vector(label, ids, map_cdf_range_k_minwise);
 
                         cdf.push_back({value, cumulative_probability});
-
-                       
                     }
-                    
 
                     PiecewiseRegressionModel reg_model;
                     reg_model.train_int(cdf);
@@ -1104,253 +1104,254 @@ namespace clustered_hybrid_search
             }
         }
 
-
-         // Clustering and maintaining the sketch for count min sketch and regression models
-        void clustering_for_cms_and_cdf_filtering_for_quantile_regression(tableint size_of_cluster)
+        void popularity_threshold(float cms_threshold, float cdf_threshold)
         {
-            // Implement clustering and sketch maintenance logic here
-
-            unsigned int clusterNumber = 0;
-            std::vector<std::pair<tableint, int>> predicate_data_CDF; // This is used for computing the CDF for range filtering
-            int counterForFilter = 0;
-            // For keeping track of visited nodes
-            std::unordered_set<tableint> visitedIds;
-            std::unordered_set<tableint> localVisitedIds;
-
-            for (tableint id = 0; id < max_elements_; id++)
-            {
-                if (visitedIds.find(id) != visitedIds.end())
-                    continue;
-                visitedIds.insert(id);
-                bit_manipulation_short(id, clusterNumber);
-                counterForFilter++;
-                int *data = (int *)this->get_linklist0(id);
-                if (!data)
-                    continue; // Error handling
-                size_t size = this->getListCount((linklistsizeint *)data);
-                tableint *datal = (tableint *)(data + 1);
-                // Keeping track of local visited Ids for a cluster
-                // One hop insertion
-
-                for (size_t j = 0; j < size; j++)
-                {
-                    tableint candidateId = *(datal + j);
-                    if (localVisitedIds.find(candidateId) != localVisitedIds.end())
-                        continue;
-                    localVisitedIds.insert(candidateId);
-                    visitedIds.insert(candidateId);
-
-                    // Inserting the CDF Value here
-
-                    predicate_data_CDF.emplace_back(candidateId, meta_data_predicates[candidateId].second);
-
-                    // To Do insert Count min sketch Logic
-                    bit_manipulation_short(candidateId, clusterNumber);
-                    counterForFilter++;
-                }
-
-                // Two hop insertion
-                for (size_t j = 0; j < size; j++)
-                {
-
-                    tableint candidateId = *(datal + j);
-                    int *twoHopData = (int *)this->get_linklist0(candidateId);
-                    if (!twoHopData)
-                        continue; // Error handling
-
-                    size_t twoHopSize = this->getListCount((linklistsizeint *)twoHopData);
-                    tableint *twoHopDatal = (tableint *)(twoHopData + 1);
-                    for (size_t k = 0; k < twoHopSize; k++)
-                    {
-                        tableint candidateIdTwoHop = *(twoHopDatal + k);
-                        if (localVisitedIds.find(candidateIdTwoHop) != localVisitedIds.end())
-                            continue;
-                        localVisitedIds.insert(candidateIdTwoHop);
-                        visitedIds.insert(candidateIdTwoHop);
-                        // Insert CDF value here
-
-                        predicate_data_CDF.emplace_back(candidateIdTwoHop, meta_data_predicates[candidateIdTwoHop].second);
-                        // Todo the CMS value
-
-                        bit_manipulation_short(candidateIdTwoHop, clusterNumber);
-
-                        counterForFilter++;
-                    }
-                }
-                // Updating the data structure after insertion
-                // Updating the data structure after insertion
-
-                // If the cluster size exceeds the defined size, we compute the CMS and CDF Regression model for that cluster and move to the next cluster
-                // We also flush the data structures for the next cluster
-                if (counterForFilter >= size_of_cluster)
-                {
-                    // Update CMS
-                    // Update the CDF Regression Model
-                    //  Step 1: Calculate the total number of data points
-                    size_t n = predicate_data_CDF.size();
-
-                    // Step 2: Count occurrences of each unique value// this computation is only for CDF computation
-                    std::map<int, std::vector<tableint>> count_map;
-                    for (const auto &pred : predicate_data_CDF)
-                    {
-                        // Check if the predicate (pred.second) already exists in the map
-                        if (count_map.find(pred.second) != count_map.end())
-                        {
-                            // If it exists, add the id (pred.first) to the map vector of ids
-                            count_map[pred.second].push_back(pred.first);
-                        }
-                        else
-                        {
-                            // If it doesn't exist, create a new vector with the id and insert it into the map
-                            count_map[pred.second] = {pred.first};
-                        }
-                    }
-
-                    // Step 3: Prepare a vector to store the CDF
-                    std::vector<std::pair<int, double>> cdf; // (value, cumulative probability)
-                    // Step 4: Compute the CDF
-                    double cumulative_count = 0;
-                    //  here count is the of ids vector
-                    std::unordered_map<int, std::vector<uint16_t>> map_cdf_range_k_minwise;
-
-                   
-                    for (const auto &[value, ids] : count_map)
-                    {
-                        cumulative_count += ids.size(); // Increment cumulative count
-
-                        double cumulative_probability = cumulative_count / n; // Calculate cumulative probability
-                        int label = check_range_search(cumulative_probability);
-
-                        //  computing_and_inserting_relevant_range_to_vector(label, ids, map_cdf_range_k_minwise);
-
-                        cdf.push_back({value, cumulative_probability});
-
-                       
-                    }
-                    
-
-                    QuantileRegressionModel reg_model;
-                    reg_model.train_int(cdf);
-                    // reg_model.setMapCdfRangeKMinwiseFull(map_cdf_range_k_minwise);
-                    // reg_model.setTotal(counterForFilter);
-                    double cumulative_count_prediction = 0;
-                    std::ofstream csv_file_prediction("/scratch/aa5f25/datasets/RegressionModelTestingPrediction/" + std::to_string(clusterNumber) + "_cdf.csv");
-                    // Write header
-                    csv_file_prediction << "value,actual_cdf,predicted_cdf,difference\n";
-                    for (const auto &[value, count] : count_map)
-                    {
-                        double prediction = reg_model.predict_int(value);
-
-                        cumulative_count_prediction += count.size(); // Increment cumulative count
-
-                        double actual_cdf = cumulative_count_prediction / n; // Calculate cumulative probability
-                                                                             // Difference (error)
-                        double diff = std::abs(actual_cdf - prediction);
-
-                        // Write all values
-                        csv_file_prediction
-                            << value << ","
-                            << actual_cdf << ","
-                            << prediction << ","
-                            << diff << "\n";
-                    }
-                    csv_file_prediction.close();
-
-                    mapForRegressionModel[clusterNumber] = std::move(reg_model);
-
-                    clusterNumber++;
-                    counterForFilter = 0;
-                    predicate_data_CDF.clear();
-                    cdf.clear();
-                    localVisitedIds.clear();
-                }
-            }
-
-            if (counterForFilter > 0)
-            {
-
-                // Update the CDF Regression Model
-
-                // Step 1: Calculate the total number of data points
-                size_t n = predicate_data_CDF.size();
-
-                // Step 2: Count occurrences of each unique value// this computation is only for CDF computation
-                std::map<int, std::vector<tableint>> count_map;
-                for (const auto &pred : predicate_data_CDF)
-                {
-                    // Check if the predicate (pred.second) already exists in the map
-                    if (count_map.find(pred.second) != count_map.end())
-                    {
-                        // If it exists, add the id (pred.first) to the vector
-                        count_map[pred.second].push_back(pred.first);
-                    }
-                    else
-                    {
-                        // If it doesn't exist, create a new vector with the id and insert it into the map
-                        count_map[pred.second] = {pred.first};
-                    }
-                }
-
-                // Step 3: Prepare a vector to store the CDF
-                std::vector<std::pair<int, double>> cdf; // (value, cumulative probability)
-
-                // Step 4: Compute the CDF
-                double cumulative_count = 0;
-                //  here count is the size of ids vector
-
-                for (const auto &[value, count] : count_map)
-                {
-                    cumulative_count += count.size(); // Increment cumulative count
-
-                    double cumulative_probability = cumulative_count / n; // Calculate cumulative probability
-                    int label = check_range_search(cumulative_probability);
-
-                    //  computing_and_inserting_relevant_range_to_vector(label, count, map_cdf_range_k_minwise);
-
-                    cdf.push_back({value, cumulative_probability});
-                }
-
-                /// Compute the Regression Model using Eign
-                // Insert it into the  map insert it into the map[id, Model]
-                //  Flush the predicate Vector
-                // Also in the map also insert the CMS here.
-
-                QuantileRegressionModel reg_model;
-                reg_model.train_int(cdf);
-                // reg_model.setMapCdfRangeKMinwiseFull(map_cdf_range_k_minwise);
-                // reg_model.setTotal(counterForFilter);
-                double cumulative_count_prediction = 0;
-                std::ofstream csv_file_prediction("/scratch/aa5f25/datasets/RegressionModelTestingPrediction/" + std::to_string(clusterNumber) + "_cdf.csv");
-                // Write header
-                csv_file_prediction << "value,actual_cdf,predicted_cdf,difference\n";
-                for (const auto &[value, count] : count_map)
-                {
-                    double prediction = reg_model.predict_int(value);
-
-                    cumulative_count_prediction += count.size(); // Increment cumulative count
-
-                    double actual_cdf = cumulative_count_prediction / n; // Calculate cumulative probability
-                                                                         // Difference (error)
-                    double diff = std::abs(actual_cdf - prediction);
-
-                    // Write all values
-                    csv_file_prediction
-                        << value << ","
-                        << actual_cdf << ","
-                        << prediction << ","
-                        << diff << "\n";
-                }
-                csv_file_prediction.close();
-
-                mapForRegressionModel[clusterNumber] = std::move(reg_model);
-                clusterNumber++;
-                counterForFilter = 0;
-                predicate_data_CDF.clear();
-                cdf.clear();
-                localVisitedIds.clear();
-            }
+            CMS_POPULARITY_THRESHOLD = cms_threshold;
+            REGRESSION_MODEL_THRESHOLD = cdf_threshold;
         }
- 
+
+        //  // Clustering and maintaining the sketch for count min sketch and regression models
+        // void clustering_for_cms_and_cdf_filtering_for_quantile_regression(tableint size_of_cluster)
+        // {
+        //     // Implement clustering and sketch maintenance logic here
+
+        //     unsigned int clusterNumber = 0;
+        //     std::vector<std::pair<tableint, int>> predicate_data_CDF; // This is used for computing the CDF for range filtering
+        //     int counterForFilter = 0;
+        //     // For keeping track of visited nodes
+        //     std::unordered_set<tableint> visitedIds;
+        //     std::unordered_set<tableint> localVisitedIds;
+
+        //     for (tableint id = 0; id < max_elements_; id++)
+        //     {
+        //         if (visitedIds.find(id) != visitedIds.end())
+        //             continue;
+        //         visitedIds.insert(id);
+        //         bit_manipulation_short(id, clusterNumber);
+        //         counterForFilter++;
+        //         int *data = (int *)this->get_linklist0(id);
+        //         if (!data)
+        //             continue; // Error handling
+        //         size_t size = this->getListCount((linklistsizeint *)data);
+        //         tableint *datal = (tableint *)(data + 1);
+        //         // Keeping track of local visited Ids for a cluster
+        //         // One hop insertion
+
+        //         for (size_t j = 0; j < size; j++)
+        //         {
+        //             tableint candidateId = *(datal + j);
+        //             if (localVisitedIds.find(candidateId) != localVisitedIds.end())
+        //                 continue;
+        //             localVisitedIds.insert(candidateId);
+        //             visitedIds.insert(candidateId);
+
+        //             // Inserting the CDF Value here
+
+        //             predicate_data_CDF.emplace_back(candidateId, meta_data_predicates[candidateId].second);
+
+        //             // To Do insert Count min sketch Logic
+        //             bit_manipulation_short(candidateId, clusterNumber);
+        //             counterForFilter++;
+        //         }
+
+        //         // Two hop insertion
+        //         for (size_t j = 0; j < size; j++)
+        //         {
+
+        //             tableint candidateId = *(datal + j);
+        //             int *twoHopData = (int *)this->get_linklist0(candidateId);
+        //             if (!twoHopData)
+        //                 continue; // Error handling
+
+        //             size_t twoHopSize = this->getListCount((linklistsizeint *)twoHopData);
+        //             tableint *twoHopDatal = (tableint *)(twoHopData + 1);
+        //             for (size_t k = 0; k < twoHopSize; k++)
+        //             {
+        //                 tableint candidateIdTwoHop = *(twoHopDatal + k);
+        //                 if (localVisitedIds.find(candidateIdTwoHop) != localVisitedIds.end())
+        //                     continue;
+        //                 localVisitedIds.insert(candidateIdTwoHop);
+        //                 visitedIds.insert(candidateIdTwoHop);
+        //                 // Insert CDF value here
+
+        //                 predicate_data_CDF.emplace_back(candidateIdTwoHop, meta_data_predicates[candidateIdTwoHop].second);
+        //                 // Todo the CMS value
+
+        //                 bit_manipulation_short(candidateIdTwoHop, clusterNumber);
+
+        //                 counterForFilter++;
+        //             }
+        //         }
+        //         // Updating the data structure after insertion
+        //         // Updating the data structure after insertion
+
+        //         // If the cluster size exceeds the defined size, we compute the CMS and CDF Regression model for that cluster and move to the next cluster
+        //         // We also flush the data structures for the next cluster
+        //         if (counterForFilter >= size_of_cluster)
+        //         {
+        //             // Update CMS
+        //             // Update the CDF Regression Model
+        //             //  Step 1: Calculate the total number of data points
+        //             size_t n = predicate_data_CDF.size();
+
+        //             // Step 2: Count occurrences of each unique value// this computation is only for CDF computation
+        //             std::map<int, std::vector<tableint>> count_map;
+        //             for (const auto &pred : predicate_data_CDF)
+        //             {
+        //                 // Check if the predicate (pred.second) already exists in the map
+        //                 if (count_map.find(pred.second) != count_map.end())
+        //                 {
+        //                     // If it exists, add the id (pred.first) to the map vector of ids
+        //                     count_map[pred.second].push_back(pred.first);
+        //                 }
+        //                 else
+        //                 {
+        //                     // If it doesn't exist, create a new vector with the id and insert it into the map
+        //                     count_map[pred.second] = {pred.first};
+        //                 }
+        //             }
+
+        //             // Step 3: Prepare a vector to store the CDF
+        //             std::vector<std::pair<int, double>> cdf; // (value, cumulative probability)
+        //             // Step 4: Compute the CDF
+        //             double cumulative_count = 0;
+        //             //  here count is the of ids vector
+        //             std::unordered_map<int, std::vector<uint16_t>> map_cdf_range_k_minwise;
+
+        //             for (const auto &[value, ids] : count_map)
+        //             {
+        //                 cumulative_count += ids.size(); // Increment cumulative count
+
+        //                 double cumulative_probability = cumulative_count / n; // Calculate cumulative probability
+        //                 int label = check_range_search(cumulative_probability);
+
+        //                 //  computing_and_inserting_relevant_range_to_vector(label, ids, map_cdf_range_k_minwise);
+
+        //                 cdf.push_back({value, cumulative_probability});
+
+        //             }
+
+        //             QuantileRegressionModel reg_model;
+        //             reg_model.train_int(cdf);
+        //             // reg_model.setMapCdfRangeKMinwiseFull(map_cdf_range_k_minwise);
+        //             // reg_model.setTotal(counterForFilter);
+        //             double cumulative_count_prediction = 0;
+        //             std::ofstream csv_file_prediction("/scratch/aa5f25/datasets/RegressionModelTestingPrediction/" + std::to_string(clusterNumber) + "_cdf.csv");
+        //             // Write header
+        //             csv_file_prediction << "value,actual_cdf,predicted_cdf,difference\n";
+        //             for (const auto &[value, count] : count_map)
+        //             {
+        //                 double prediction = reg_model.predict_int(value);
+
+        //                 cumulative_count_prediction += count.size(); // Increment cumulative count
+
+        //                 double actual_cdf = cumulative_count_prediction / n; // Calculate cumulative probability
+        //                                                                      // Difference (error)
+        //                 double diff = std::abs(actual_cdf - prediction);
+
+        //                 // Write all values
+        //                 csv_file_prediction
+        //                     << value << ","
+        //                     << actual_cdf << ","
+        //                     << prediction << ","
+        //                     << diff << "\n";
+        //             }
+        //             csv_file_prediction.close();
+
+        //             mapForRegressionModel[clusterNumber] = std::move(reg_model);
+
+        //             clusterNumber++;
+        //             counterForFilter = 0;
+        //             predicate_data_CDF.clear();
+        //             cdf.clear();
+        //             localVisitedIds.clear();
+        //         }
+        //     }
+
+        //     if (counterForFilter > 0)
+        //     {
+
+        //         // Update the CDF Regression Model
+
+        //         // Step 1: Calculate the total number of data points
+        //         size_t n = predicate_data_CDF.size();
+
+        //         // Step 2: Count occurrences of each unique value// this computation is only for CDF computation
+        //         std::map<int, std::vector<tableint>> count_map;
+        //         for (const auto &pred : predicate_data_CDF)
+        //         {
+        //             // Check if the predicate (pred.second) already exists in the map
+        //             if (count_map.find(pred.second) != count_map.end())
+        //             {
+        //                 // If it exists, add the id (pred.first) to the vector
+        //                 count_map[pred.second].push_back(pred.first);
+        //             }
+        //             else
+        //             {
+        //                 // If it doesn't exist, create a new vector with the id and insert it into the map
+        //                 count_map[pred.second] = {pred.first};
+        //             }
+        //         }
+
+        //         // Step 3: Prepare a vector to store the CDF
+        //         std::vector<std::pair<int, double>> cdf; // (value, cumulative probability)
+
+        //         // Step 4: Compute the CDF
+        //         double cumulative_count = 0;
+        //         //  here count is the size of ids vector
+
+        //         for (const auto &[value, count] : count_map)
+        //         {
+        //             cumulative_count += count.size(); // Increment cumulative count
+
+        //             double cumulative_probability = cumulative_count / n; // Calculate cumulative probability
+        //             int label = check_range_search(cumulative_probability);
+
+        //             //  computing_and_inserting_relevant_range_to_vector(label, count, map_cdf_range_k_minwise);
+
+        //             cdf.push_back({value, cumulative_probability});
+        //         }
+
+        //         /// Compute the Regression Model using Eign
+        //         // Insert it into the  map insert it into the map[id, Model]
+        //         //  Flush the predicate Vector
+        //         // Also in the map also insert the CMS here.
+
+        //         QuantileRegressionModel reg_model;
+        //         reg_model.train_int(cdf);
+        //         // reg_model.setMapCdfRangeKMinwiseFull(map_cdf_range_k_minwise);
+        //         // reg_model.setTotal(counterForFilter);
+        //         double cumulative_count_prediction = 0;
+        //         std::ofstream csv_file_prediction("/scratch/aa5f25/datasets/RegressionModelTestingPrediction/" + std::to_string(clusterNumber) + "_cdf.csv");
+        //         // Write header
+        //         csv_file_prediction << "value,actual_cdf,predicted_cdf,difference\n";
+        //         for (const auto &[value, count] : count_map)
+        //         {
+        //             double prediction = reg_model.predict_int(value);
+
+        //             cumulative_count_prediction += count.size(); // Increment cumulative count
+
+        //             double actual_cdf = cumulative_count_prediction / n; // Calculate cumulative probability
+        //                                                                  // Difference (error)
+        //             double diff = std::abs(actual_cdf - prediction);
+
+        //             // Write all values
+        //             csv_file_prediction
+        //                 << value << ","
+        //                 << actual_cdf << ","
+        //                 << prediction << ","
+        //                 << diff << "\n";
+        //         }
+        //         csv_file_prediction.close();
+
+        //         mapForRegressionModel[clusterNumber] = std::move(reg_model);
+        //         clusterNumber++;
+        //         counterForFilter = 0;
+        //         predicate_data_CDF.clear();
+        //         cdf.clear();
+        //         localVisitedIds.clear();
+        //     }
+        // }
     };
 
 }
