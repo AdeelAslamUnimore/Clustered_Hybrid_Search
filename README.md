@@ -1,5 +1,4 @@
-# 📘 Project README
-
+# 📘 Versatile Sketch-based Attribute filtering for Hybrid Vector Search
 > A step-by-step guide for building, indexing, querying, and evaluating the system.
 
 ---
