@@ -14,7 +14,9 @@
 #include <cstdint>
 #include <iostream>
 #include <random>
+#if defined(USE_AVX) || defined(USE_SSE)
 #include <immintrin.h>
+#endif
 #include <iostream>
 
 using namespace std;
